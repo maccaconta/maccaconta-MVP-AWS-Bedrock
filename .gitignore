@@ -1,0 +1,42 @@
+# =============================
+# Ambiente virtual Python
+# =============================
+
+.venv/
+venv/
+ENV/
+env/
+
+# =============================
+# Documentação local da aplicação
+# =============================
+documentacao/
+documentacao_da_aplicacao/
+
+# =============================
+# Python cache
+# =============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# =============================
+# Logs
+# =============================
+*.log
+
+# =============================
+# IDE / Editor
+# =============================
+.vscode/
+.idea/
+
+# =============================
+# Sistema operacional
+# =============================
+.DS_Store
+Thumbs.db
+
+# Secrets / local config
+secrets.yaml

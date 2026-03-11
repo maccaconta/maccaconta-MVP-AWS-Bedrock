@@ -1,0 +1,325 @@
+# =============================================================================
+# endpoints/summarize_session_endpoint.py
+# Endpoint: POST /v1/ai/summarize-session
+#
+# Objetivo:
+#   Gerar/atualizar um resumo clínico da sessão a partir de:
+#     - currentSummary (sumário acumulado)
+#     - recentTurns (lista de turns: input/output)
+#   O endpoint:
+#     1) Valida payload
+#     2) Carrega template de prompt (se houver)
+#     3) (Opcional) usa RAG para buscar evidências (opcional)
+#     4) Monta prompt com instruções de sistema (fortes) para forçar JSON com summary
+#     5) Invoca Bedrock Runtime (modelo configurável)
+#     6) Extrai texto do retorno e tenta parse para JSON (se o modelo obedecer)
+#     7) Retorna newSummary (texto) e raw (payload do modelo) + telemetria
+#
+# Observações de design:
+#   - RAG é opcional: se BEDROCK_KB_ID não estiver configurado, segue sem evidências.
+#   - Uso de generationConfig com defaults para comportamento determinístico em resumos.
+#   - Extração defensiva do texto retornado pelo modelo (suporta várias formas de resposta).
+# =============================================================================
+
+from __future__ import annotations
+
+import json
+from typing import Any, Dict, List, Optional
+
+from flask import Blueprint, request, jsonify, current_app
+
+from utils.validation_utils import validate_summarize_payload  # espera-se existir
+from utils.prompt_repository import PromptRepository
+from utils.prompt_composer import compose_summarize_prompt  # função que monta prompt a partir de template
+
+from services.bedrock_kb_service import BedrockKnowledgeBaseService
+from services.bedrock_runtime_service import BedrockRuntimeService
+
+summarize_bp = Blueprint("summarize", __name__)
+
+# Singletons (iniciados lazy)
+_repo: Optional[PromptRepository] = None
+_kb: Optional[BedrockKnowledgeBaseService] = None
+_rt: Optional[BedrockRuntimeService] = None
+
+
+def _cfg(key: str, default: Any = None) -> Any:
+    return current_app.config.get(key, default)
+
+
+def _init() -> None:
+    """
+    Inicializa dependências compartilhadas.
+    Levanta Runtime e KB (se configurados).
+    """
+    global _repo, _kb, _rt
+
+    templates_root = _cfg("TEMPLATES_ROOT")
+    if not templates_root:
+        raise RuntimeError("TEMPLATES_ROOT não configurado")
+
+    region = _cfg("AWS_REGION")
+    if not region:
+        raise RuntimeError("AWS_REGION não configurado")
+
+    timeout_seconds = int(_cfg("BEDROCK_TIMEOUT_SECONDS", 20))
+
+    if _repo is None:
+        _repo = PromptRepository(templates_root)
+
+    # KB é opcional: inicializa apenas se houver BEDROCK_KB_ID
+    if _kb is None and _cfg("BEDROCK_KB_ID"):
+        _kb = BedrockKnowledgeBaseService(region=region, timeout_seconds=timeout_seconds)
+
+    if _rt is None:
+        _rt = BedrockRuntimeService(region=region, timeout_seconds=timeout_seconds)
+
+
+def _extract_text_from_model_raw(raw: Dict[str, Any]) -> str:
+    """
+    Extrai, de forma defensiva, o texto gerado no payload bruto retornado pelo Bedrock Runtime.
+    Testa os caminhos mais comuns e usa fallback para qualquer campo textual.
+    """
+    if not raw:
+        return ""
+
+    # Caminhos comuns (variam por modelo/versão)
+    try:
+        # Formato esperado: output.message.content[0].text
+        text = raw.get("output", {}).get("message", {}).get("content", [])[0].get("text", "")
+        if text:
+            return text
+    except Exception:
+        pass
+
+    # Resultado no campo 'results' com 'outputText' (algumas respostas)
+    try:
+        text = raw.get("results", [{}])[0].get("outputText", "")
+        if text:
+            return text
+    except Exception:
+        pass
+
+    # Fallbacks
+    for key in ("completion", "generated_text", "body", "text"):
+        v = raw.get(key)
+        if isinstance(v, str) and v.strip():
+            return v
+
+    # Se body for bytes-like (algumas libs do boto retornam body como objeto), tente decodificar
+    # Nota: o Bedrock client padrão retorna body.read() em bytes antes de parsear para JSON.
+    # Aqui assumimos que já passamos por json.loads(resp['body'].read()) no service, então normalmente não entra aqui.
+
+    return ""
+
+
+def _try_parse_json(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Tenta converter o texto retornado pelo modelo em JSON. Retorna dict se ok, caso contrário None.
+    (Modelos podem obedecer instrução de retornar JSON estruturado.)
+    """
+    if not text:
+        return None
+    text = text.strip()
+    # Se o modelo devolver apenas um JSON, parse direto
+    try:
+        return json.loads(text)
+    except Exception:
+        # Tentar extrair JSON embutido (por exemplo: "Here is the JSON:\n{...}")
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            candidate = text[start:end+1]
+            try:
+                return json.loads(candidate)
+            except Exception:
+                return None
+    return None
+
+
+@summarize_bp.route("/summarize-session", methods=["POST"])
+def post_summarize_session():
+    """
+    POST /v1/ai/summarize-session
+
+    Payload esperado (exemplo):
+    {
+      "sessionId": "sessao-001",
+      "currentSummary": "Resumo atual",
+      "recentTurns": [
+        {"input": "texto do user", "output": "texto do assistant"},
+        ...
+      ],
+      "templateFile": "resumo_sessao_v1.json",  # opcional
+      "generationConfig": {"maxOutputTokens":400, "temperature":0.0, "topP":0.0},
+      "promptOverride": { "system_instructions": "...", "format_note": "..." }  # opcional
+    }
+    """
+    try:
+        _init()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    payload = request.get_json(force=True, silent=True)
+    if payload is None:
+        return jsonify({"error": "Payload JSON inválido"}), 400
+
+    # Validação leve (se tiver utilitário específico, use)
+    # Se você tem validate_summarize_payload no utils, usa; senão, valida manualmente.
+    try:
+        # Use função utilitária se existir
+        err = None
+        try:
+            err = validate_summarize_payload(payload)
+        except Exception:
+            # se a validação utilitária não existir ou falhar, seguimos com validação minimal
+            err = None
+        if err:
+            return jsonify({"error": err}), 400
+    except Exception:
+        # segue sem validação rígida
+        pass
+
+    session_id = payload.get("sessionId", "")
+    current_summary = payload.get("currentSummary", "") or ""
+    recent_turns: List[Dict[str, str]] = payload.get("recentTurns", []) or []
+
+    template_file = payload.get("templateFile")  # opcional: nome do template de prompt
+    prompt_override: Dict[str, Any] = payload.get("promptOverride", {}) or {}
+
+    # Generation config com defaults seguros (determinísticos para resumo)
+    gen_cfg = payload.get("generationConfig", {}) or {}
+    generation = {
+        "maxOutputTokens": int(gen_cfg.get("maxOutputTokens", _cfg("DEFAULT_MAX_OUTPUT_TOKENS", 300))),
+        "temperature": float(gen_cfg.get("temperature", _cfg("DEFAULT_TEMPERATURE", 0.0))),
+        "topP": float(gen_cfg.get("topP", _cfg("DEFAULT_TOP_P", 0.0))),
+    }
+
+    # -----------------------
+    # Opcional: RAG (se quiser incluir evidências no resumo)
+    # -----------------------
+    rag_context = {
+        "evidences": [],
+        "citations": [],
+        "flags": [],
+        "no_evidence": True,
+    }
+    kb_id = _cfg("BEDROCK_KB_ID")
+    if kb_id:
+        # Compose a simple retrieval query from recent turns (join user inputs)
+        query_text = " ".join([t.get("input", "") for t in recent_turns]) or current_summary or "resuma a sessão"
+        try:
+            kb_resp = _kb.retrieve(knowledge_base_id=kb_id, query_text=query_text, top_k=int(_cfg("DEFAULT_TOP_K", 3)))
+            rag_context = BedrockKnowledgeBaseService.normalize(kb_resp, score_threshold=float(_cfg("DEFAULT_SCORE_THRESHOLD", 0.1)))
+        except Exception as e:
+            # Não derruba: anota flag
+            rag_context = {"evidences": [], "citations": [], "flags": ["rag_error"], "no_evidence": True, "error": str(e)}
+
+    # -----------------------
+    # Montagem do prompt
+    # -----------------------
+    # Preferência: se houver templateFile e PromptRepository/composer suportarem, use-o.
+    prompt_str = None
+    try:
+        if template_file:
+            # tenta carregar template e compor via compose_summarize_prompt (se existir)
+            template_json = _repo.load_template("summarize", template_file)
+            prompt_str = compose_summarize_prompt(
+                payload_json=payload,
+                template_json=template_json,
+                rag_context=rag_context,
+            )
+    except FileNotFoundError:
+        prompt_str = None
+    except Exception:
+        prompt_str = None
+
+    # Se não montou via template, constrói um prompt explícito (system + user)
+    if not prompt_str:
+        # System instruction fortíssima para forçar JSON com campo "summary" + "clinical_implication"
+        system_instructions = prompt_override.get(
+            "system_instructions",
+            "Você é um assistente clínico. Produza um resumo clínico conciso em português. "
+            "Retorne **somente** um JSON válido com os campos: "
+            "\"summary\" (texto objetivo, max 120 palavras) e \"clinical_implication\" (uma frase com ação/risco). "
+            "Não adicione explicações, perguntas ou texto fora do JSON."
+        )
+
+        # Constrói o conteúdo do usuário com currentSummary + recentTurns + evidências (se houver)
+        turns_text = ""
+        for idx, t in enumerate(recent_turns, start=1):
+            u = t.get("input", "").replace("\n", " ").strip()
+            a = t.get("output", "").replace("\n", " ").strip()
+            turns_text += f"{idx}) USER: {u}\n   ASSISTANT: {a}\n"
+
+        evidences_text = ""
+        if rag_context and rag_context.get("evidences"):
+            evidences_text = "\nEvidências encontradas (trechos):\n"
+            for e in rag_context.get("evidences", [])[:5]:
+                evidences_text += f"- {e.get('snippet','')[:200]} (source: {e.get('docId','')})\n"
+
+        user_content = (
+            f"Current summary: {current_summary}\n\n"
+            f"Recent turns:\n{turns_text}\n"
+            f"{evidences_text}\n"
+            "Baseie o resumo somente nas informações acima. Retorne apenas o JSON solicitado."
+        )
+
+        # Construímos uma string única que representa o prompt (o service deve enviar via 'messages' com system/user)
+        # O BedrockRuntimeService.invoke_text_model é esperado receber 'prompt' string e generation dict.
+        prompt_str = json.dumps({
+            "system": system_instructions,
+            "user": user_content
+        }, ensure_ascii=False)
+
+    # -----------------------
+    # Chamada ao modelo
+    # -----------------------
+    model_id = _cfg("BEDROCK_SUMMARIZE_MODEL_ID")
+    if not model_id:
+        return jsonify({"error": "BEDROCK_SUMMARIZE_MODEL_ID não configurado"}), 500
+
+    try:
+        # Nota: o BedrockRuntimeService.invoke_text_model deve ser compatível com o formato
+        # (aceitar prompt_str que contenha system+user e montar messages/inferenceConfig corretamente).
+        llm_resp = _rt.invoke_text_model(model_id=model_id, prompt=prompt_str, generation=generation)
+    except Exception as e:
+        return jsonify({"error": f"Falha ao invocar modelo: {str(e)}"}), 502
+
+    # llm_resp pode conter:
+    # - 'replyText' (string) quando o service normalizou
+    # - 'raw' (payload bruto do bedrock) para extração defensiva
+    raw = llm_resp.get("raw") or {}
+    # tenta extrair texto do raw (o método é defensivo)
+    text = llm_resp.get("replyText") or _extract_text_from_model_raw(raw)
+
+    # Tenta parsear JSON do texto (se o modelo retornou JSON conforme instrução)
+    parsed = _try_parse_json(text)
+
+    if parsed and isinstance(parsed, dict):
+        summary_text = parsed.get("summary", "").strip()
+        clinical_implication = parsed.get("clinical_implication", "").strip()
+    else:
+        # Fallback: usa todo o texto como summary, generate clinical_implication vazio
+        summary_text = text.strip()
+        clinical_implication = ""
+
+    # Se o summary estiver vazio, fallback para current_summary
+    if not summary_text:
+        summary_text = current_summary.strip()
+
+    response_payload = {
+        "sessionId": session_id,
+        "model": model_id,
+        "newSummary": summary_text,
+        "clinicalImplication": clinical_implication,
+        "newSummaryRaw": raw,  # para debug/telemetria (bruto)
+        "telemetry": {
+            "usedKb": bool(kb_id),
+            "ragCitations": rag_context.get("citations", []),
+            "ragFlags": rag_context.get("flags", []),
+            "generation": generation,
+        }
+    }
+
+    return jsonify(response_payload), 200

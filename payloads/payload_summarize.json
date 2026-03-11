@@ -1,0 +1,25 @@
+{
+  "sessionId": "sessao-somalgin-002",
+  "currentSummary": "",
+  "recentTurns": [
+    {
+      "input": "o que é e para que serve o Somalgin Cardio? E qual empresa fabrica? qual o Farm. Resp.? que é Quem é Adriano Pinheiro Coelho?",
+      "output": "Somalgin Cardio é um medicamento à base de ácido acetilsalicílico, usado para prevenir eventos cardiovasculares e tratar dores. Fabricado pela EMS Sigma Pharma, Adriano Pinheiro Coelho é o Farm. Resp."
+    },
+    {
+      "input": "o que é o telefone 0800 722 6001?",
+      "output": "O telefone 0800 722 6001 é um número gratuito para obter orientações em caso de superdose acidental de medicamentos. Ligue para este número se precisar de ajuda imediata."
+    }
+    ,
+    {
+      "input": "Esse remédio é Registrado por quem e em qual cidade ?",
+      "output": "O medicamento é registrado pela EMS SIGMA PHARMA LTDA, localizada em Hortolândia, SP."
+    }
+  ],
+  "templateFile": "resumo_sessao_v1.json",
+  "generationConfig": {
+    "maxOutputTokens": 200,
+    "temperature": 0.0,
+    "topP": 0.1
+  }
+}

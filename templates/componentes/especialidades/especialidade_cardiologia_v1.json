@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "tipo": "especialidade",
+    "id": "cardiologia",
+    "versao": "v1",
+    "descricao": "Contexto clínico de cardiologia para triagem e investigação de sintomas."
+  },
+  "conteudo": {
+    "descricao_curta": "Triagem cardiovascular com atenção a sinais de risco.",
+    "pontos_chave": [
+      "Dor torácica e equivalentes anginosos requerem investigação estruturada.",
+      "Sinais associados podem indicar gravidade: dispneia, sudorese, síncope.",
+      "Encaminhamento imediato quando houver sinais de instabilidade."
+    ]
+  }
+}

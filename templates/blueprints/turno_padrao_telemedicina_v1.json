@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "blueprintId": "turno_padrao_telemedicina",
+    "blueprintVersion": "v1",
+    "descricao": "Blueprint padrão de Turn para telemedicina: combina persona, especialidade, cenário, políticas e contrato de saída."
+  },
+  "componentRefs": {
+    "persona": "persona_risco_v1.json",
+    "especialidade": "especialidade_cardiologia_v1.json",
+    "cenario": "cenario_triagem_dor_toracica_v1.json",
+    "politicas": "politicas_segurança_telemedicina_v1.json",
+    "saida": "saida_texto_curto_v1.json"
+  }
+}

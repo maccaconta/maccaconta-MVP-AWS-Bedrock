@@ -1,0 +1,42 @@
+ python.exe -m pip install --upgrade pip
+
+1) Criar ambiente virtual
+python -m venv venv
+
+2) Ativar
+venv\Scripts\Activate.ps1
+
+3) Instalar as Libs
+pip install -r requirements.txt
+
+4) Acertar Certificado da maquina Local
+
+4.1 Execute certmgr.msc e descubra o certificado da máquina (Ex. Zscaler)
+
+4.2 Copie o certificado para uma pasta (escolha Base-64 encoded X.509 (.CER))  
+    Exemplo "C:\Users\mmaccafe\certs\corp-root.cer"
+
+4.3 Instale lib certifi no ambiente virtual python
+    pip install -U certifi
+
+4.4. Seta variavel de ambiente AWS 
+    $env:AWS_CA_BUNDLE="C:\Users\mmaccafe\certs\corp-root.cer"
+
+4.5 Testa Conexão
+    python teste_bedrock_conexao.py
+
+4.6 Se não funcionar tente 
+    setx REQUESTS_CA_BUNDLE "C:\Users\mmaccafe\certs\corp-root.cer"
+    setx SSL_CERT_FILE "C:\Users\mmaccafe\certs\corp-root.cer"
+
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+
+5) Executar a aplicação 
+ python app.py
+
+
+6) Desativar Ambiente Virtual Python
+deactivate
+
+

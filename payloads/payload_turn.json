@@ -1,0 +1,44 @@
+{
+  "sessionId": "sessao-teste-002",
+  "turnId": "turn-0007",
+  "turnIndex": 1,
+
+  "userText": "Esse remédio é Registrado por quem e em qual cidade ? ",
+
+  "contextPackage": {
+    "conversationSummary": "",
+    "lastTurns": [
+      {
+        "input": "Olá, preciso de ajuda.",
+        "output": "Claro. Pode descrever sua dúvida "
+      }
+    ],
+    "scenarioContext": {
+      "channel": "telemedicina",
+      "locale": "pt-BR",
+      "patientProfile": {
+        "age": 54,
+        "sex": "M",
+        "riskFactors": ["hipertensão", "tabagismo"],
+        "knownConditions": ["hipertensão"]
+      }
+    }
+  },
+
+  "promptRef": {
+    "blueprintId": "turno_padrao_telemedicina",
+    "blueprintVersion": "v1"
+  },
+
+  "retrievalConfig": {
+    "topK": 10,
+    "scoreThreshold": 0.0,
+    "filters": null
+  },
+
+  "generationConfig": {
+    "maxOutputTokens": 700,
+    "temperature": 0.2,
+    "topP": 0.9
+  }
+}

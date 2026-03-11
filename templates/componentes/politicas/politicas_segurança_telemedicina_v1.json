@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "tipo": "politicas",
+    "id": "seguranca_telemedicina",
+    "versao": "v1",
+    "descricao": "Regras de segurança, qualidade e governança para respostas em telemedicina."
+  },
+  "conteudo": {
+    "regras": [
+      "Não inventar fatos; quando faltar informação, solicitar esclarecimento.",
+      "Manter orientação segura e evitar prescrição não fundamentada.",
+      "Usar evidências recuperadas quando disponíveis para embasar orientações."
+    ]
+  }
+}

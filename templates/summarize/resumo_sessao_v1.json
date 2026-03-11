@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "tipo": "summarize-session",
+    "id": "resumo_sessao",
+    "versao": "v1"
+  },
+  "blocks": {
+    "system": "Você é um assistente clínico. Gere UM ÚNICO JSON válido contendo os campos descritos em outputContract. O JSON deve estar em Português, ser conciso e objetivo. NÃO adicione texto fora do JSON; não faça perguntas; não invente informação. Priorize fatos clínicos, evolução, condutas e pendências.",
+    "policy": [
+      "Manter concisão.",
+      "Não inventar informações (se algo estiver incerto, omita).",
+      "Priorizar itens clínicos, decisões e encaminhamentos.",
+      "Retornar apenas JSON válido conforme outputContract"
+    ],
+    "user_template": "Current summary: {{currentSummary}}\n\nRecent turns:\n{{#each recentTurns}}{{@index + 1}}) USER: {{this.input}}\n   ASSISTANT: {{this.output}}\n{{/each}}\n\nInstruções: Com base somente nas informações acima, produza o JSON requisitado no outputContract. Não acrescente texto, explicações ou perguntas.",
+    "outputContract": {
+      "format": "json",
+      "schema": {
+        "type": "object",
+        "required": ["summary", "clinical_implication"],
+        "properties": {
+          "summary": {
+            "type": "string",
+            "description": "Resumo clínico objetivo em Português. Máx ~120 palavras."
+          },
+          "clinical_implication": {
+            "type": "string",
+            "description": "Uma frase indicando implicação clínica ou ação imediata (ex.: encaminhar, monitorar, alto risco)."
+          },
+          "key_findings": {
+            "type": "array",
+            "description": "Lista curta (0-5) com achados principais (curta strings).",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "example": {
+        "summary": "Paciente masculino de 54 anos, hipertenso, apresentou dor torácica em aperto irradiando para o braço esquerdo, associada a sudorese e dispneia. Foi orientado encaminhamento emergencial.",
+        "clinical_implication": "Possível síndrome coronariana aguda — encaminhar para emergência.",
+        "key_findings": ["Dor torácica em aperto", "Irradiação para braço esquerdo", "Sudorese e dispneia", "Hipertenso 54 anos"]
+      }
+    }
+  }
+}

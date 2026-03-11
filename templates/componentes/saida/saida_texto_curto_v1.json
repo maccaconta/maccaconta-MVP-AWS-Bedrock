@@ -1,0 +1,13 @@
+{
+  "meta": {
+    "tipo": "saida",
+    "id": "texto_curto",
+    "versao": "v1",
+    "descricao": "Resposta curta e objetiva."
+  },
+  "conteudo": {
+    "formato": "texto",
+    "tamanho_maximo": "curto",
+    "limite_frases": 3
+  }
+}

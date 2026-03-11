@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "tipo": "cenario",
+    "id": "triagem_dor_toracica",
+    "versao": "v1",
+    "descricao": "Roteiro de triagem de dor torácica em telemedicina."
+  },
+  "conteudo": {
+    "descricao_curta": "Roteiro objetivo para investigar dor torácica.",
+    "passos": [
+      "Confirmar início e duração do sintoma.",
+      "Caracterizar dor: localização, intensidade, tipo, fatores de piora/melhora.",
+      "Perguntar sintomas associados: dispneia, sudorese, náusea, tontura.",
+      "Perguntar irradiação: braço esquerdo, mandíbula, dorso.",
+      "Verificar antecedentes e fatores de risco."
+    ]
+  }
+}
