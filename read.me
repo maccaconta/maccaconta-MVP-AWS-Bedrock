@@ -40,3 +40,69 @@ pip install -r requirements.txt
 deactivate
 
 
+7) Rodar localmente com Docker
+
+docker build -t ems-ia-backend:latest .
+docker run --rm -p 8080:8080 \
+  -e AWS_REGION=us-east-1 \
+  -e BEDROCK_KB_ID=SEU_KB_ID \
+  -e BEDROCK_TURN_MODEL_ID=amazon.nova-pro-v1:0 \
+  ems-ia-backend:latest
+
+  8) Push para o ECR (registro da AWS)
+  8.1 Criar repo no ECR: ems-ia-backend
+  8.2 Login no ECR
+  8.3 Tag e push
+
+  aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+  docker tag ems-ia-backend:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ems-ia-backend:latest
+  docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ems-ia-backend:latest
+
+
+9)Arquivos YAML
+
+9.1 Deploy no EKS (Kubernetes)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ems-ia-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ems-ia-backend
+  template:
+    metadata:
+      labels:
+        app: ems-ia-backend
+    spec:
+      containers:
+        - name: ems-ia-backend
+          image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ems-ia-backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: BEDROCK_KB_ID
+              value: "SEU_KB_ID"
+            - name: BEDROCK_TURN_MODEL_ID
+              value: "amazon.nova-pro-v1:0"
+
+
+9.2 Service (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ems-ia-backend-svc
+spec:
+  selector:
+    app: ems-ia-backend
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
+
+
+

@@ -1,0 +1,37 @@
+{
+  "turnId": "turn-001",
+  "turnIndex": 1,
+  "sessionId": "sessao-graph-001",
+
+  "contextPackage": {
+    "scenarioContext": {
+      "channel": "telemedicina",
+      "locale": "pt-BR",
+      "specialty": "cardiologia",
+      "patientProfile": {
+        "age": 55,
+        "sex": "M"
+      }
+    },
+    "conversationSummary": "",
+    "lastTurns": []
+  },
+
+  "userText": "O que é e para que serve o Somalgin Cardio? Quem é o farmacêutico responsável e qual empresa fabrica?",
+
+  "promptRef": {
+    "blueprintId": "turno_padrao_telemedicina",
+    "blueprintVersion": "v1"
+  },
+
+  "retrievalConfig": {
+    "topK": 3,
+    "scoreThreshold": 0.1
+  },
+
+  "generationConfig": {
+    "maxOutputTokens": 400,
+    "temperature": 0.2,
+    "topP": 0.9
+  }
+}

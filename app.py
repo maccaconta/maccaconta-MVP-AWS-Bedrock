@@ -27,6 +27,7 @@ from config import Config
 from endpoints.turn_endpoint import turn_bp
 from endpoints.evaluate_endpoint import evaluate_bp
 from endpoints.summarize_session_endpoint import summarize_bp
+from endpoints.turn_graph_endpoint import turn_graph_bp
 
 def create_app() -> Flask:
     """
@@ -39,6 +40,7 @@ def create_app() -> Flask:
     app.register_blueprint(turn_bp, url_prefix="/v1/ai")
     app.register_blueprint(evaluate_bp, url_prefix="/v1/ai")
     app.register_blueprint(summarize_bp, url_prefix="/v1/ai")
+    app.register_blueprint(turn_graph_bp, url_prefix="/v1/ai")
 
     return app
 
