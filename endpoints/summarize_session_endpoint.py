@@ -18,10 +18,7 @@
 # Observações de design:
 #   - RAG é opcional: se BEDROCK_KB_ID não estiver configurado, segue sem evidências.
 #   - Uso de generationConfig com defaults para comportamento determinístico em resumos.
-#   - Extração defensiva do texto retornado pelo modelo (suporta várias formas de resposta).
 # =============================================================================
-# endpoints/summarize_session_endpoint.py
-# endpoints/summarize_session_endpoint.py
 from __future__ import annotations
 
 import json
@@ -140,7 +137,6 @@ def _try_extract_summary(text: str, expected_format: str) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # fallback
     return {"summary": text}
 
 

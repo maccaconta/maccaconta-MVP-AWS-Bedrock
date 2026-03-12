@@ -13,12 +13,11 @@
 #     5) Invoca modelo via Bedrock Runtime
 #     6) Retorna replyText + citations + flags + telemetria
 #
-# Melhorias desta versão:
+# Funções:
 #   - Evita KeyError em config: usa current_app.config.get(...)
 #   - RAG opcional: se BEDROCK_KB_ID não estiver setado, não derruba o endpoint
 #   - Região e timeouts via config
 #   - Defaults para top_k/threshold e geração com fallbacks
-
 # Retorno Adicionais KPIs
 # Extrai e retorna: tokensIn, tokensOut, totalTokens .
 # Mede e retorna latencyMs (tempo total da invocação do modelo).
@@ -27,11 +26,10 @@
 # Retorna rag com citations, evidenceCount, avgScore, maxScore, flags e noEvidence.
 # Retorna execution.costEstimateUsd usando COST_PER_1000_TOKENS_USD da config .
 # Mantém compatibilidade: continua retornando replyText, model, citations, flags, telemetry.
-
-
+# Retorna telemetria completa (tokens, latência, raw, rag metrics, prompt metadata)
+#
+# NOTA: VER DETALHES TÉCNICOS NA DOCUMENTAÇÃO DA APLICAÇÃO
 # =============================================================================
-# endpoints/turn_endpoint.py
-# Atualizado para retornar telemetria completa (tokens, latência, raw, rag metrics, prompt metadata)
 from __future__ import annotations
 
 import time
@@ -268,7 +266,7 @@ def post_turn():
         prompt_metadata["promptLengthTokens"] = None
 
     # Tentativa de estimativa de custo (opcional) - usa custo por 1000 tokens do config se existir
-    # variavel mantida em config.py
+    # variavel mantida em config.py = COST_PER_1000_TOKENS_USD
     cost_estimate_usd = None
     try:
         cost_per_1000 = float(current_app.config.get("COST_PER_1000_TOKENS_USD", 0.0))
