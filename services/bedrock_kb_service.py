@@ -67,54 +67,6 @@ class BedrockKnowledgeBaseService:
         return self.client.retrieve(**req)
 
 
-
-    # @staticmethod
-    # def normalize(resp: Dict[str, Any], score_threshold: float) -> Dict[str, Any]:
-    #     """
-    #     Converte o retorno do retrieve para um formato simples de evidências.
-    #     """
-    #     results = resp.get("retrievalResults", [])
-    #     evidences: List[Dict[str, Any]] = []
-    #     citations: List[str] = []
-
-    #     best_score = 0.0
-    #     for r in results:
-    #         score = float(r.get("score", 0.0))
-    #         best_score = max(best_score, score)
-
-    #         content = r.get("content", {})
-    #         snippet = content.get("text", "")[:500]
-
-    #         location = r.get("location", {})
-    #         doc_id = str(location.get("s3Location", {}).get("uri", "")) or str(location)
-    #         #chunk_id = r.get("metadata", {}).get("chunkId", "desconhecido")
-            
-    #         meta = r.get("metadata", {}) or {}
-    #         chunk_id = meta.get("chunkId") or meta.get("chunk_id") or meta.get("id") or r.get("id") or "desconhecido"
-
-    #         evidences.append({
-    #             "docId": doc_id,
-    #             "chunkId": chunk_id,
-    #             "score": score,
-    #             "snippet": snippet,
-    #         })
-    #         citations.append(f"{doc_id}:{chunk_id}")
-
-    #     citations = list(dict.fromkeys(citations))
-
-    #     flags: List[str] = []
-    #     no_evidence = (len(evidences) == 0) or (best_score < score_threshold)
-    #     if no_evidence:
-    #         flags.append("no_evidence")
-
-    #     return {
-    #         "evidences": evidences,
-    #         "citations": citations,
-    #         "flags": flags,
-    #         "no_evidence": no_evidence,
-    #     }
-    
-
     @staticmethod
     def normalize(resp: Dict[str, Any], score_threshold: float) -> Dict[str, Any]:
         """
@@ -135,7 +87,7 @@ class BedrockKnowledgeBaseService:
             best_score = max(best_score, score)
 
             content = r.get("content", {}) or {}
-            # Many KBs store the text in content.text or content['body'] etc.
+ 
             snippet = ""
             if isinstance(content, dict):
                 snippet = content.get("text") or content.get("body") or ""
@@ -147,13 +99,13 @@ class BedrockKnowledgeBaseService:
 
             location = r.get("location", {}) or {}
             doc_id = ""
-            # Try s3Location.uri first, then fallbacks
+ 
             try:
                 doc_id = str(location.get("s3Location", {}).get("uri", "")) or str(location)
             except Exception:
                 doc_id = str(location)
 
-            # robust chunk id selection: check various possible names
+ 
             meta = r.get("metadata", {}) or {}
             chunk_id = (
                 meta.get("chunkId")
@@ -161,7 +113,7 @@ class BedrockKnowledgeBaseService:
                 or meta.get("id")
                 or meta.get("chunk")
                 or r.get("id")
-                or doc_id  # last resort: use doc id so citation not empty
+                or doc_id   
             )
 
             evidences.append({
@@ -175,7 +127,7 @@ class BedrockKnowledgeBaseService:
 
             citations.append(f"{doc_id}:{chunk_id}")
 
-        # dedupe citations preserving order
+ 
         seen = set()
         deduped_citations = []
         for c in citations:

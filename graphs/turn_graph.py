@@ -6,7 +6,6 @@
 # - Reusar serviços e templates existentes:
 #   PromptRepository, compose_turn_prompt, BedrockKnowledgeBaseService, BedrockRuntimeService
 # - Organizar o fluxo em nós (validate -> load templates -> retrieve -> compose -> invoke -> response)
-# - NÃO altera nenhum script atual: é uma implementação paralela para /turn-graph
 #
 # Requisito:
 #   pip install langgraph langchain-core
@@ -424,13 +423,12 @@ def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
     threshold = float(retrieval_cfg.get("scoreThreshold", app_cfg.get("DEFAULT_SCORE_THRESHOLD", 0.1)))
 
     # === tokens ===
-    # Tentamos obter do rawModelResponse.usage como no seu endpoint antigo.
     raw_model = llm.get("rawModelResponse") or llm.get("raw") or llm.get("raw_response")
     usage = None
     if isinstance(raw_model, dict):
         usage = raw_model.get("usage")
 
-    # fallback: se seu runtime já devolve usage separado
+    # fallback 
     if usage is None and isinstance(llm.get("usage"), dict):
         usage = llm["usage"]
 
@@ -447,8 +445,7 @@ def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
     invoke_ms = int(state.get("invoke_ms", 0) or 0)
     latency_ms = retrieve_ms + invoke_ms
 
-    # custo: só calcule se você já tem uma tabela interna de preços.
-    # Para manter o contrato, vamos preencher apenas se houver.
+    # custo: só calcule se   já tem uma tabela interna de preços.
     cost_estimate = llm.get("costEstimateUsd")
 
     execution = {
@@ -464,7 +461,7 @@ def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
         "blueprintId": blueprint_id,
         "blueprintVersion": blueprint_version,
         "promptLengthChars": len(prompt_str),
-        "promptLengthTokens": tokens_in,  # no seu endpoint antigo bate com inputTokens
+        "promptLengthTokens": tokens_in,   
     }
 
     # === resposta final (igual ao endpoint antigo) ===
@@ -489,7 +486,7 @@ def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
 
     # Remove chaves None para ficar limpo (opcional)
     if resp["execution"]["tokensIn"] is None:
-        # se você preferir manter explícito, remova este bloco
+ 
         pass
 
     return {"response": resp}
@@ -503,7 +500,7 @@ def route_if_error(state: TurnState) -> str:
 
 
 def node_error(state: TurnState, config: RunnableConfig) -> TurnState:
-    # Mantém error/http_status; nada a fazer aqui.
+    # Mantém error/http_status 
     if "http_status" not in state:
         state["http_status"] = 500
     return {}

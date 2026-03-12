@@ -88,7 +88,6 @@ def _extract_usage_from_raw(raw: Dict[str, Any]) -> Dict[str, Optional[int]]:
     if not raw or not isinstance(raw, dict):
         return usage
 
-    # caminho mais comum
     u = raw.get("usage", {}) or {}
     tokens_in = u.get("inputTokens") or u.get("input_token_count") or u.get("input_tokens")
     tokens_out = u.get("outputTokens") or u.get("output_token_count") or u.get("output_tokens")
@@ -116,7 +115,7 @@ def _compute_rag_metrics(rag_norm: Dict[str, Any]) -> Dict[str, Any]:
     """
     evidences = rag_norm.get("evidences", []) or []
     citations = rag_norm.get("citations", []) or []
-    # dedupe citations preserving order
+
     seen = set()
     deduped = []
     for c in citations:
@@ -269,6 +268,7 @@ def post_turn():
         prompt_metadata["promptLengthTokens"] = None
 
     # Tentativa de estimativa de custo (opcional) - usa custo por 1000 tokens do config se existir
+    # variavel mantida em config.py
     cost_estimate_usd = None
     try:
         cost_per_1000 = float(current_app.config.get("COST_PER_1000_TOKENS_USD", 0.0))

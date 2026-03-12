@@ -42,7 +42,7 @@ class BedrockRuntimeService:
         user_text = (user_text or "").strip()
         if not system_text:
             return user_text
-        # separadores claros para o modelo entender o que são instruções
+        # separadores   para o modelo entender o que são instruções
         return f"INSTRUÇÕES DO SISTEMA:\n{system_text}\n\nCONTEÚDO A SER PROCESSADO:\n{user_text}"
 
     @staticmethod
@@ -75,7 +75,7 @@ class BedrockRuntimeService:
                 elif isinstance(content, str):
                     content_text = content
                 else:
-                    # fallback: stringify
+                    # fallback: 
                     content_text = json.dumps(content, ensure_ascii=False)
             except Exception:
                 content_text = str(m.get("content", "") or "")
@@ -103,7 +103,7 @@ class BedrockRuntimeService:
         if not data or not isinstance(data, dict):
             return ""
 
-        # caminho típico: output.message.content[0].text
+ 
         try:
             text = data.get("output", {}).get("message", {}).get("content", [])[0].get("text", "")
             if isinstance(text, str) and text.strip():
@@ -133,8 +133,7 @@ class BedrockRuntimeService:
             return s[:2000]
         except Exception:
             return ""
-
-    # ---- main method ------------------------------------------------------------
+ 
     def invoke_text_model(self, model_id: str, prompt: Union[str, Dict[str, str], List[Dict[str, Any]]], generation: Dict[str, Any]):
         """
         Invoca o modelo de texto no Bedrock Runtime.

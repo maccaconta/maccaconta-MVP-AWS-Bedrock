@@ -72,7 +72,6 @@ def _collect_kb_evidence(kb_service: BedrockKnowledgeBaseService, kb_id: str, qu
         except Exception:
             continue
 
-    # dedupe citations preserving order
     seen = set()
     deduped = []
     for c in all_citations:
@@ -171,17 +170,17 @@ def post_evaluate():
 
     # Composição do prompt
     if template:
-        # se seu compose_prompt devolve dict {"system","user"}, respeitamos
+ 
         try:
             prompt_out = compose_prompt(payload_json=payload, prompt_template_json=template, rag_context_json=rag_context)
             if isinstance(prompt_out, dict):
                 prompt = {"system": prompt_out.get("system", ""), "user": prompt_out.get("user", "")}
             else:
-                # string retornada -> usar como user e pegar system do template
+                # string retornada ->  como user e pegar system do template
                 system_text = (template.get("blocks", {}) or {}).get("system", "")
                 prompt = {"system": system_text, "user": str(prompt_out)}
         except Exception:
-            # fallback simples: compor user com transcript + citations
+            # fallback simples:   user com transcript + citations
             system_text = (template.get("blocks", {}) or {}).get("system", "") if template else ""
             user_lines = [f"Context: {json.dumps(ctx, ensure_ascii=False)}", "Transcript:"]
             for i, t in enumerate(turns, start=1):
@@ -230,10 +229,8 @@ def post_evaluate():
     if parsed and isinstance(parsed, dict):
         result = parsed
     else:
-        # RETORNO CORRIGIDO: não mais sintaxe inválida
-        return jsonify({"error": "Modelo não retornou JSON válido", "conteudo_bruto": reply, "raw": raw}), 502
+         return jsonify({"error": "Modelo não retornou JSON válido", "conteudo_bruto": reply, "raw": raw}), 502
 
-    # Garantir campos mínimos
     result.setdefault("sessionId", session_id)
     result.setdefault("model", model_id)
     result.setdefault("telemetry", {"generation": generation, "usedKb": bool(kb_id)})
