@@ -1,0 +1,20 @@
+{
+  "sessionId": "sessao-avaliacao-001",
+  "rubricaId": "avaliacao_rubrica_telemedicina",
+  "templateFile": "avaliacao_rubrica_telemedicina_v1.json",
+  "transcript": {
+    "context": {
+      "especialidadeAlvo": "cardiologia",
+      "produto": "Somalgin Cardio",
+      "perfilMedico": "cardiologista experiente"
+    },
+    "turns": [
+      {"role": "representante", "text": "Bom dia doutor, vim falar sobre o Somalgin Cardio, que é um ácido acetilsalicílico para prevenção cardiovascular."},
+      {"role": "medico", "text": "Qual é a evidência clínica que sustenta o uso nesse perfil de paciente?"},
+      {"role": "representante", "text": "Ele é bastante utilizado e tem boa aceitação no mercado."},
+      {"role": "medico", "text": "E sobre segurança gastrointestinal?"},
+      {"role": "representante", "text": "Não tenho os dados agora, mas posso enviar depois."}
+    ]
+  },
+  "generationConfig": {"maxOutputTokens": 400, "temperature": 0.0, "topP": 0.1}
+}

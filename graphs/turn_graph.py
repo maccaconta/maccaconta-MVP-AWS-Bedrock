@@ -19,6 +19,8 @@ from typing import Any, Dict, Optional, TypedDict
 from langgraph.graph import StateGraph, END
 from langchain_core.runnables import RunnableConfig
 
+import time
+
 
 # -----------------------------------------------------------------------------
 # State do Grafo
@@ -147,7 +149,7 @@ def node_load_templates(state: TurnState, config: RunnableConfig) -> TurnState:
     return {"blueprint": blueprint, "components": components}
 
 
-def node_retrieve_kb(state: TurnState, config: RunnableConfig) -> TurnState:
+# def node_retrieve_kb(state: TurnState, config: RunnableConfig) -> TurnState:
     assert _kb is not None, "BedrockKnowledgeBaseService não inicializado"
     app_cfg = _app_cfg_from_runnable_config(config)
     payload = state["payload"]
@@ -182,6 +184,82 @@ def node_retrieve_kb(state: TurnState, config: RunnableConfig) -> TurnState:
 
     return {"kb_id": kb_id, "kb_raw": kb_resp, "rag": rag_norm}
 
+def node_retrieve_kb(state: TurnState, config: RunnableConfig) -> TurnState:
+    assert _kb is not None, "BedrockKnowledgeBaseService não inicializado"
+    app_cfg = _app_cfg_from_runnable_config(config)
+    payload = state["payload"]
+
+    kb_id = app_cfg.get("BEDROCK_KB_ID")
+
+    retrieval_cfg = payload.get("retrievalConfig", {})
+    top_k = int(retrieval_cfg.get("topK", app_cfg.get("DEFAULT_TOP_K", 3)))
+    threshold = float(retrieval_cfg.get("scoreThreshold", app_cfg.get("DEFAULT_SCORE_THRESHOLD", 0.1)))
+    filters = retrieval_cfg.get("filters")
+
+    t0 = time.perf_counter()
+
+    # Sem KB: segue sem RAG, mas mantém contrato
+    if not kb_id:
+        rag_norm = {
+            "evidences": [],
+            "citations": [],
+            "flags": [],
+            "no_evidence": True,
+        }
+        retrieve_ms = int((time.perf_counter() - t0) * 1000)
+
+        rag_block = {
+            "avgScore": 0.0,
+            "maxScore": 0.0,
+            "evidenceCount": 0,
+            "citations": [],
+            "flags": [],
+            "noEvidence": True,
+        }
+
+        return {
+            "kb_id": None,
+            "rag": rag_norm,          # normalizado (interno)
+            "rag_block": rag_block,   # bloco no formato do endpoint antigo
+            "retrieve_ms": retrieve_ms,
+        }
+
+    try:
+        kb_resp = _kb.retrieve(
+            knowledge_base_id=kb_id,
+            query_text=payload["userText"],
+            top_k=top_k,
+            filters=filters,
+        )
+        rag_norm = _kb.normalize(kb_resp, score_threshold=threshold)
+    except Exception as e:
+        return {"error": f"Falha no retrieve da KB: {e}", "http_status": 502}
+
+    retrieve_ms = int((time.perf_counter() - t0) * 1000)
+
+    # Calcula stats do RAG a partir de evidences normalizadas
+    evidences = rag_norm.get("evidences", []) or []
+    scores = [float(ev.get("score", 0.0)) for ev in evidences]
+    evidence_count = len(evidences)
+    max_score = max(scores) if scores else 0.0
+    avg_score = (sum(scores) / len(scores)) if scores else 0.0
+
+    rag_block = {
+        "avgScore": avg_score,
+        "maxScore": max_score,
+        "evidenceCount": evidence_count,
+        "citations": rag_norm.get("citations", []),
+        "flags": rag_norm.get("flags", []),
+        "noEvidence": bool(rag_norm.get("no_evidence")),
+    }
+
+    return {
+        "kb_id": kb_id,
+        "kb_raw": kb_resp,
+        "rag": rag_norm,
+        "rag_block": rag_block,
+        "retrieve_ms": retrieve_ms,
+    }
 
 def node_compose_prompt(state: TurnState, config: RunnableConfig) -> TurnState:
     payload = state["payload"]
@@ -194,7 +272,7 @@ def node_compose_prompt(state: TurnState, config: RunnableConfig) -> TurnState:
     return {"prompt": prompt_str}
 
 
-def node_invoke_model(state: TurnState, config: RunnableConfig) -> TurnState:
+# def node_invoke_model(state: TurnState, config: RunnableConfig) -> TurnState:
     assert _rt is not None, "BedrockRuntimeService não inicializado"
     app_cfg = _app_cfg_from_runnable_config(config)
     payload = state["payload"]
@@ -220,7 +298,7 @@ def node_invoke_model(state: TurnState, config: RunnableConfig) -> TurnState:
     return {"model_id": model_id, "generation": generation, "llm": llm}
 
 
-def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
+# def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
     app_cfg = _app_cfg_from_runnable_config(config)
     payload = state["payload"]
 
@@ -251,6 +329,169 @@ def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
             "usage": llm.get("usage"),
         },
     }
+    return {"response": resp}
+
+# def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
+    app_cfg = _app_cfg_from_runnable_config(config)
+    payload = state["payload"]
+    pr = payload["promptRef"]
+    blueprint_id = pr["blueprintId"]
+    blueprint_version = pr["blueprintVersion"]
+
+    rag = state.get("rag", {})
+    llm = state.get("llm", {})
+
+    retrieval_cfg = payload.get("retrievalConfig", {})
+    top_k = int(retrieval_cfg.get("topK", app_cfg.get("DEFAULT_TOP_K", 3)))
+    threshold = float(retrieval_cfg.get("scoreThreshold", app_cfg.get("DEFAULT_SCORE_THRESHOLD", 0.1)))
+
+    # telemetry básico (adicione tokens/usage se seu runtime retornar)
+    telemetry = {
+        "blueprintId": blueprint_id,
+        "blueprintVersion": blueprint_version,
+        "usedKb": bool(state.get("kb_id")),
+        "noEvidence": bool(rag.get("no_evidence")),
+        "ragTopK": top_k,
+        "ragThreshold": threshold,
+        # inclusão de metadados de sessão/turn para persistência
+        "turnId": payload.get("turnId"),
+        "turnIndex": payload.get("turnIndex"),
+        "sessionId": payload.get("sessionId"),
+    }
+
+    # incluir usage se existir (tokens/cost)
+    if isinstance(llm.get("usage"), dict):
+        telemetry["usage"] = llm.get("usage")
+
+    resp = {
+        "replyText": llm.get("replyText", ""),
+        "citations": rag.get("citations", []),
+        "flags": rag.get("flags", []),
+        "model": llm.get("modelId", state.get("model_id")),
+        "telemetry": telemetry
+    }
+    return {"response": resp}
+
+def node_invoke_model(state: TurnState, config: RunnableConfig) -> TurnState:
+    assert _rt is not None, "BedrockRuntimeService não inicializado"
+    app_cfg = _app_cfg_from_runnable_config(config)
+    payload = state["payload"]
+
+    gen_cfg = payload.get("generationConfig", {})
+    generation = {
+        "maxOutputTokens": int(gen_cfg.get("maxOutputTokens", app_cfg.get("DEFAULT_MAX_OUTPUT_TOKENS", 700))),
+        "temperature": float(gen_cfg.get("temperature", app_cfg.get("DEFAULT_TEMPERATURE", 0.2))),
+        "topP": float(gen_cfg.get("topP", app_cfg.get("DEFAULT_TOP_P", 0.9))),
+    }
+
+    model_id = app_cfg.get("BEDROCK_TURN_MODEL_ID", "amazon.nova-pro-v1:0")
+
+    t0 = time.perf_counter()
+    try:
+        llm = _rt.invoke_text_model(
+            model_id=model_id,
+            prompt=state["prompt"],
+            generation=generation,
+        )
+    except Exception as e:
+        return {"error": f"Falha ao invocar modelo: {e}", "http_status": 502}
+
+    invoke_ms = int((time.perf_counter() - t0) * 1000)
+
+    return {
+        "model_id": model_id,
+        "generation": generation,
+        "llm": llm,
+        "invoke_ms": invoke_ms,
+    }
+
+def node_build_response(state: TurnState, config: RunnableConfig) -> TurnState:
+    app_cfg = _app_cfg_from_runnable_config(config)
+    payload = state["payload"]
+
+    pr = payload["promptRef"]
+    blueprint_id = pr["blueprintId"]
+    blueprint_version = pr["blueprintVersion"]
+
+    rag_norm = state.get("rag", {}) or {}
+    rag_block = state.get("rag_block", {}) or {}
+
+    llm = state.get("llm", {}) or {}
+    prompt_str = state.get("prompt", "") or ""
+
+    retrieval_cfg = payload.get("retrievalConfig", {})
+    top_k = int(retrieval_cfg.get("topK", app_cfg.get("DEFAULT_TOP_K", 3)))
+    threshold = float(retrieval_cfg.get("scoreThreshold", app_cfg.get("DEFAULT_SCORE_THRESHOLD", 0.1)))
+
+    # === tokens ===
+    # Tentamos obter do rawModelResponse.usage como no seu endpoint antigo.
+    raw_model = llm.get("rawModelResponse") or llm.get("raw") or llm.get("raw_response")
+    usage = None
+    if isinstance(raw_model, dict):
+        usage = raw_model.get("usage")
+
+    # fallback: se seu runtime já devolve usage separado
+    if usage is None and isinstance(llm.get("usage"), dict):
+        usage = llm["usage"]
+
+    tokens_in = None
+    tokens_out = None
+    total_tokens = None
+    if isinstance(usage, dict):
+        tokens_in = usage.get("inputTokens")
+        tokens_out = usage.get("outputTokens")
+        total_tokens = usage.get("totalTokens")
+
+    # === execution ===
+    retrieve_ms = int(state.get("retrieve_ms", 0) or 0)
+    invoke_ms = int(state.get("invoke_ms", 0) or 0)
+    latency_ms = retrieve_ms + invoke_ms
+
+    # custo: só calcule se você já tem uma tabela interna de preços.
+    # Para manter o contrato, vamos preencher apenas se houver.
+    cost_estimate = llm.get("costEstimateUsd")
+
+    execution = {
+        "latencyMs": latency_ms,
+        "tokensIn": tokens_in,
+        "tokensOut": tokens_out,
+        "totalTokens": total_tokens,
+        "costEstimateUsd": cost_estimate,
+    }
+
+    # === promptMetadata ===
+    prompt_meta = {
+        "blueprintId": blueprint_id,
+        "blueprintVersion": blueprint_version,
+        "promptLengthChars": len(prompt_str),
+        "promptLengthTokens": tokens_in,  # no seu endpoint antigo bate com inputTokens
+    }
+
+    # === resposta final (igual ao endpoint antigo) ===
+    resp = {
+        "citations": rag_norm.get("citations", []),
+        "execution": execution,
+        "flags": rag_norm.get("flags", []),
+        "generationConfig": state.get("generation", {}),
+        "model": llm.get("modelId", state.get("model_id")),
+        "promptMetadata": prompt_meta,
+        "rag": rag_block,
+        "rawModelResponse": raw_model if isinstance(raw_model, dict) else llm.get("rawModelResponse"),
+        "replyText": llm.get("replyText", ""),
+        "telemetry": {
+            "blueprintId": blueprint_id,
+            "blueprintVersion": blueprint_version,
+            "ragThreshold": threshold,
+            "ragTopK": top_k,
+            "usedKb": bool(state.get("kb_id")),
+        },
+    }
+
+    # Remove chaves None para ficar limpo (opcional)
+    if resp["execution"]["tokensIn"] is None:
+        # se você preferir manter explícito, remova este bloco
+        pass
+
     return {"response": resp}
 
 
