@@ -6,6 +6,14 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# copia o certificado corporativo e atualiza o trust store
+COPY certs/corp-root.crt /usr/local/share/ca-certificates/corp-root.crt
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
+
+# garante que bibliotecas Python/requests/boto3 usem o bundle do sistema
+ENV AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
 # Dependências do sistema (se precisar de certificados/ssl)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
