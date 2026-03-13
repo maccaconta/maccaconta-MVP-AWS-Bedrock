@@ -1,0 +1,15 @@
+{
+    "Policy": {
+        "PolicyName": "BedrockAccessPolicy",
+        "PolicyId": "ANPA23S33C3SVQOBB47TI",
+        "Arn": "arn:aws:iam::746443183845:policy/BedrockAccessPolicy",
+        "Path": "/",
+        "DefaultVersionId": "v1",
+        "AttachmentCount": 1,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "CreateDate": "2026-03-13T21:26:00+00:00",
+        "UpdateDate": "2026-03-13T21:26:00+00:00",
+        "Tags": []
+    }
+}

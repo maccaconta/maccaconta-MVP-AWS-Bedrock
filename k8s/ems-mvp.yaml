@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ems-mvp
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ems-mvp
+  template:
+    metadata:
+      labels:
+        app: ems-mvp
+    spec:
+      serviceAccountName: ems-mvp-sa
+      containers:
+        - name: ems-mvp
+          image: 746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AWS_REGION
+              value: "us-east-1"
+            - name: BEDROCK_KB_ID
+              value: "BJWEDBPNJH"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ems-mvp-service
+  namespace: default
+spec:
+  selector:
+    app: ems-mvp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer

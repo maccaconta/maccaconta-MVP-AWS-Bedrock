@@ -1,0 +1,38 @@
+{
+    "imageDetails": [
+        {
+            "registryId": "746443183845",
+            "repositoryName": "ems-mvp",
+            "imageDigest": "sha256:7295bf91813280e75dca5da91013c49baa780e864f312a4bb60ab7c737d5aa63",
+            "imageSizeInBytes": 94425125,
+            "imagePushedAt": "2026-03-13T18:33:25.080000-03:00",
+            "imageManifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactMediaType": "application/vnd.oci.image.config.v1+json",
+            "lastRecordedPullTime": "2026-03-13T19:03:05.057000-03:00",
+            "imageStatus": "ACTIVE"
+        },
+        {
+            "registryId": "746443183845",
+            "repositoryName": "ems-mvp",
+            "imageDigest": "sha256:7f8a7a54aa4fdbd56b458d795555bd3438d0d1f2a42a17cfbf974984e6a7641f",
+            "imageSizeInBytes": 1347,
+            "imagePushedAt": "2026-03-13T18:33:26.475000-03:00",
+            "imageManifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactMediaType": "application/vnd.oci.image.config.v1+json",
+            "imageStatus": "ACTIVE"
+        },
+        {
+            "registryId": "746443183845",
+            "repositoryName": "ems-mvp",
+            "imageDigest": "sha256:6e66cbda45496779baf9aa264310e1a0ef147230141d7703e6172e6fdd52ad5f",
+            "imageTags": [
+                "latest"
+            ],
+            "imageSizeInBytes": 94425125,
+            "imagePushedAt": "2026-03-13T18:33:27.404000-03:00",
+            "imageManifestMediaType": "application/vnd.oci.image.index.v1+json",
+            "lastRecordedPullTime": "2026-03-13T19:03:04.831000-03:00",
+            "imageStatus": "ACTIVE"
+        }
+    ]
+}

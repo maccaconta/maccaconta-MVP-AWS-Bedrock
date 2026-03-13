@@ -1,0 +1,5 @@
+{
+    "nodegroups": [
+        "standard-workers-small"
+    ]
+}

@@ -1,0 +1,79 @@
+{
+    "cluster": {
+        "name": "ems-mvp-cluster",
+        "arn": "arn:aws:eks:us-east-1:746443183845:cluster/ems-mvp-cluster",
+        "createdAt": "2026-03-13T16:49:51.308000-03:00",
+        "version": "1.34",
+        "endpoint": "https://A7307197CCE4C3E8DFDF3D5D3906264E.sk1.us-east-1.eks.amazonaws.com",
+        "roleArn": "arn:aws:iam::746443183845:role/eksctl-ems-mvp-cluster-cluster-ServiceRole-hKm9EzBLEjec",
+        "resourcesVpcConfig": {
+            "subnetIds": [
+                "subnet-0f7bf8525ef271bc9",
+                "subnet-037807ded695bada4",
+                "subnet-06ec94b217270cf61",
+                "subnet-0818f72833124d069"
+            ],
+            "securityGroupIds": [
+                "sg-09e24bbf1394a607b"
+            ],
+            "clusterSecurityGroupId": "sg-0712c7545f39ecbab",
+            "vpcId": "vpc-0a5bf872a9125ee6b",
+            "endpointPublicAccess": true,
+            "endpointPrivateAccess": false,
+            "publicAccessCidrs": [
+                "0.0.0.0/0"
+            ]
+        },
+        "kubernetesNetworkConfig": {
+            "serviceIpv4Cidr": "10.100.0.0/16",
+            "ipFamily": "ipv4",
+            "elasticLoadBalancing": {
+                "enabled": false
+            }
+        },
+        "logging": {
+            "clusterLogging": [
+                {
+                    "types": [
+                        "api",
+                        "audit",
+                        "authenticator",
+                        "controllerManager",
+                        "scheduler"
+                    ],
+                    "enabled": false
+                }
+            ]
+        },
+        "identity": {
+            "oidc": {
+                "issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/A7307197CCE4C3E8DFDF3D5D3906264E"
+            }
+        },
+        "status": "ACTIVE",
+        "certificateAuthority": {
+            "data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJZHFnZ0dsU1pwOFF3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TmpBek1UTXhPVFE1TURkYUZ3MHpOakF6TVRBeE9UVTBNRGRhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUUROSnNlM3gxdklGWkh6cUI5VkxiOXl3WXlETTF2U1NXeWdTWFI0WVRUQmxaazRoMk1KUVhLVWNQWWoKQktXd29NRmFQZzNOVHc0UTdOQnYxNjMxdklOT043WXlEc0pVT0RUSk1TdXRTL2ZvbStGWUdPd2hWNHhtRjlHawo1TDloNEtMNDhzWE0xdG1SSFlrdVN0VTBoVFM2MGxqK0VEWnFvTmdJSWtzejd5ZnNObkJta1lZL1duV0Y1aC9aClJSbTFLVlpiS3hSRFJ5eHlIQk44N3hkNWtZK1Q4Nk5XOHNRY0MvK1U2VHVFLzRYcUg4MEhJUHEvQmR1MFRUOXcKSXNCc24zZGFuci9kUFRDNjBZTHRPN2FnRUI2VFRzUEZZYVVRbTljOGUrS0JwaXdyNXo0UkY2Q0pDZHJYQi9sWApONWdaR1hBSVhUeWkzTTZkWkFuTllqS3A1VjVWQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJTZDNJejBKdCsrN1FsQmlvejZYZ2MwdG5GczRqQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRREtiU0p4U3d4SwptOUl3SitNVmlTZ29TWXQvZlhYTVloMU9ueTJWWFcrVmlmSTNaSGVZSDJKZ3RRK3hkM3dxaG9CNk5WSGtOWnd5CjhYMnFlWmZ0MHFocXIySDZhU01LVVhnZnBNd0RTNzlLZk1pRlJoZU4vODdaSlM5Q2VsL25xVHY5RFBMbHJUaDcKSisvUDhzZ1RkeDVWdzdTaXV1blowbVdYd09ZSmQxQmNLSlQxU29IeExmb2g5RzBOQkRaZG9tRXRpYjVJUGtFRApHcHBWQTB6Kyt4R2liSWUvZlJ4VE1lSXNaK1hqbnNhbnJpdytnaWltaUdTOTZVbGwzdGRCWWVuRTQzMDBzMXFUClE5L3lpVFNqSWl0YkM0QzU5NFl1N1hZMDBNT0lWbXpueUw5U29DazhoSU9BdEY2KzIyTVlLby9Yb2RJL3VveG8KRWJzeEw3bG1PbFNkCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+        },
+        "platformVersion": "eks.15",
+        "tags": {
+            "aws:cloudformation:stack-name": "eksctl-ems-mvp-cluster-cluster",
+            "alpha.eksctl.io/cluster-name": "ems-mvp-cluster",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:746443183845:stack/eksctl-ems-mvp-cluster-cluster/bc7f4e30-1f15-11f1-ba47-121be5bd2f03",
+            "eksctl.cluster.k8s.io/v1alpha1/cluster-name": "ems-mvp-cluster",
+            "alpha.eksctl.io/cluster-oidc-enabled": "true",
+            "aws:cloudformation:logical-id": "ControlPlane",
+            "alpha.eksctl.io/eksctl-version": "0.224.0",
+            "Name": "eksctl-ems-mvp-cluster-cluster/ControlPlane"
+        },
+        "accessConfig": {
+            "authenticationMode": "API_AND_CONFIG_MAP"
+        },
+        "upgradePolicy": {
+            "supportType": "EXTENDED"
+        },
+        "deletionProtection": false,
+        "controlPlaneScalingConfig": {
+            "tier": "standard"
+        }
+    }
+}

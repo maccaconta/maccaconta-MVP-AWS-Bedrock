@@ -1,0 +1,8 @@
+ACCOUNT_ID=746443183845
+REGION=us-east-1
+CLUSTER_NAME=ems-mvp-cluster
+NODEGROUP_NAME=standard-workers-small
+SERVICE_ACCOUNT=ems-mvp-sa
+NAMESPACE=default
+ECR_REPOSITORY=ems-mvp
+IMAGE_URI=746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest

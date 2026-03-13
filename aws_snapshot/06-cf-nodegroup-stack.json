@@ -1,0 +1,49 @@
+{
+    "Stacks": [
+        {
+            "StackId": "arn:aws:cloudformation:us-east-1:746443183845:stack/eksctl-ems-mvp-cluster-nodegroup-standard-workers-small/305bc6f0-1f28-11f1-8318-0e36a199596b",
+            "StackName": "eksctl-ems-mvp-cluster-nodegroup-standard-workers-small",
+            "Description": "EKS Managed Nodes (SSH access: false) [created by eksctl]",
+            "CreationTime": "2026-03-13T22:01:29.599000+00:00",
+            "RollbackConfiguration": {},
+            "StackStatus": "CREATE_COMPLETE",
+            "DisableRollback": false,
+            "NotificationARNs": [],
+            "Capabilities": [
+                "CAPABILITY_IAM"
+            ],
+            "Tags": [
+                {
+                    "Key": "alpha.eksctl.io/cluster-name",
+                    "Value": "ems-mvp-cluster"
+                },
+                {
+                    "Key": "alpha.eksctl.io/nodegroup-name",
+                    "Value": "standard-workers-small"
+                },
+                {
+                    "Key": "eksctl.cluster.k8s.io/v1alpha1/cluster-name",
+                    "Value": "ems-mvp-cluster"
+                },
+                {
+                    "Key": "alpha.eksctl.io/nodegroup-type",
+                    "Value": "managed"
+                },
+                {
+                    "Key": "alpha.eksctl.io/eksctl-version",
+                    "Value": "0.224.0"
+                }
+            ],
+            "EnableTerminationProtection": true,
+            "DriftInformation": {
+                "StackDriftStatus": "NOT_CHECKED"
+            },
+            "LastOperations": [
+                {
+                    "OperationType": "CREATE_STACK",
+                    "OperationId": "d5968ef6-329b-456a-833e-f8347c942df4"
+                }
+            ]
+        }
+    ]
+}

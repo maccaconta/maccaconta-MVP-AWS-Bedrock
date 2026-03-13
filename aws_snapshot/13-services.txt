@@ -1,0 +1,3 @@
+NAME              TYPE           CLUSTER-IP       EXTERNAL-IP                                                               PORT(S)        AGE    SELECTOR
+ems-mvp-service   LoadBalancer   10.100.115.180   a279487680fa4446e9e78194672dbf8f-1254157202.us-east-1.elb.amazonaws.com   80:31776/TCP   31m    app=ems-mvp
+kubernetes        ClusterIP      10.100.0.1       <none>                                                                    443/TCP        145m   <none>

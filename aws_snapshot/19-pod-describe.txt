@@ -1,0 +1,72 @@
+Name:             ems-mvp-58f74dcd9f-h7c4r
+Namespace:        default
+Priority:         0
+Service Account:  ems-mvp-sa
+Node:             ip-192-168-31-121.ec2.internal/192.168.31.121
+Start Time:       Fri, 13 Mar 2026 19:03:04 -0300
+Labels:           app=ems-mvp
+                  pod-template-hash=58f74dcd9f
+Annotations:      <none>
+Status:           Running
+IP:               192.168.29.187
+IPs:
+  IP:           192.168.29.187
+Controlled By:  ReplicaSet/ems-mvp-58f74dcd9f
+Containers:
+  ems-mvp:
+    Container ID:   containerd://24ac4103cae26b66620a7504deba0616a9f6937005120acb848175fb25cc286f
+    Image:          746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest
+    Image ID:       746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp@sha256:6e66cbda45496779baf9aa264310e1a0ef147230141d7703e6172e6fdd52ad5f
+    Port:           8080/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Fri, 13 Mar 2026 19:03:10 -0300
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     500m
+      memory:  512Mi
+    Requests:
+      cpu:     200m
+      memory:  256Mi
+    Environment:
+      AWS_REGION:                   us-east-1
+      BEDROCK_KB_ID:                BJWEDBPNJH
+      AWS_STS_REGIONAL_ENDPOINTS:   regional
+      AWS_ROLE_ARN:                 arn:aws:iam::746443183845:role/eksctl-ems-mvp-cluster-addon-iamserviceaccoun-Role1-6cEglEqOATKs
+      AWS_WEB_IDENTITY_TOKEN_FILE:  /var/run/secrets/eks.amazonaws.com/serviceaccount/token
+    Mounts:
+      /var/run/secrets/eks.amazonaws.com/serviceaccount from aws-iam-token (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-kt9f9 (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  aws-iam-token:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  86400
+  kube-api-access-kt9f9:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age                From               Message
+  ----     ------            ----               ----               -------
+  Warning  FailedScheduling  32m                default-scheduler  0/1 nodes are available: 1 Too many pods. no new claims to deallocate, preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+  Warning  FailedScheduling  18m (x3 over 26m)  default-scheduler  0/1 nodes are available: 1 Too many pods. no new claims to deallocate, preemption: 0/1 nodes are available: 1 No preemption victims found for incoming pod.
+  Warning  FailedScheduling  18m (x2 over 18m)  default-scheduler  0/2 nodes are available: 1 Too many pods, 1 node(s) had untolerated taint(s). no new claims to deallocate, preemption: 0/2 nodes are available: 1 No preemption victims found for incoming pod, 1 Preemption is not helpful for scheduling.
+  Normal   Scheduled         18m                default-scheduler  Successfully assigned default/ems-mvp-58f74dcd9f-h7c4r to ip-192-168-31-121.ec2.internal
+  Normal   Pulling           18m                kubelet            spec.containers{ems-mvp}: Pulling image "746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest"
+  Normal   Pulled            18m                kubelet            spec.containers{ems-mvp}: Successfully pulled image "746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest" in 5.832s (5.832s including waiting). Image size: 94428368 bytes.
+  Normal   Created           18m                kubelet            spec.containers{ems-mvp}: Created container: ems-mvp
+  Normal   Started           18m                kubelet            spec.containers{ems-mvp}: Started container ems-mvp

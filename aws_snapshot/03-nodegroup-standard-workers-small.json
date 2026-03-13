@@ -1,0 +1,59 @@
+{
+    "nodegroup": {
+        "nodegroupName": "standard-workers-small",
+        "nodegroupArn": "arn:aws:eks:us-east-1:746443183845:nodegroup/ems-mvp-cluster/standard-workers-small/d4ce749c-2ddf-a151-28a6-dc899e8b04f0",
+        "clusterName": "ems-mvp-cluster",
+        "version": "1.34",
+        "releaseVersion": "1.34.4-20260304",
+        "createdAt": "2026-03-13T19:01:52.408000-03:00",
+        "modifiedAt": "2026-03-13T19:12:02.202000-03:00",
+        "status": "ACTIVE",
+        "capacityType": "ON_DEMAND",
+        "scalingConfig": {
+            "minSize": 1,
+            "maxSize": 1,
+            "desiredSize": 1
+        },
+        "instanceTypes": [
+            "t3.small"
+        ],
+        "subnets": [
+            "subnet-037807ded695bada4",
+            "subnet-0f7bf8525ef271bc9"
+        ],
+        "amiType": "AL2023_x86_64_STANDARD",
+        "nodeRole": "arn:aws:iam::746443183845:role/eksctl-ems-mvp-cluster-nodegroup-s-NodeInstanceRole-T9oftDsuTMez",
+        "labels": {
+            "alpha.eksctl.io/cluster-name": "ems-mvp-cluster",
+            "alpha.eksctl.io/nodegroup-name": "standard-workers-small"
+        },
+        "resources": {
+            "autoScalingGroups": [
+                {
+                    "name": "eks-standard-workers-small-d4ce749c-2ddf-a151-28a6-dc899e8b04f0"
+                }
+            ]
+        },
+        "health": {
+            "issues": []
+        },
+        "updateConfig": {
+            "maxUnavailable": 1
+        },
+        "launchTemplate": {
+            "name": "eksctl-ems-mvp-cluster-nodegroup-standard-workers-small",
+            "version": "1",
+            "id": "lt-0edccfa35e2d820b7"
+        },
+        "tags": {
+            "aws:cloudformation:stack-name": "eksctl-ems-mvp-cluster-nodegroup-standard-workers-small",
+            "alpha.eksctl.io/cluster-name": "ems-mvp-cluster",
+            "alpha.eksctl.io/nodegroup-name": "standard-workers-small",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:746443183845:stack/eksctl-ems-mvp-cluster-nodegroup-standard-workers-small/305bc6f0-1f28-11f1-8318-0e36a199596b",
+            "eksctl.cluster.k8s.io/v1alpha1/cluster-name": "ems-mvp-cluster",
+            "aws:cloudformation:logical-id": "ManagedNodeGroup",
+            "alpha.eksctl.io/nodegroup-type": "managed",
+            "alpha.eksctl.io/eksctl-version": "0.224.0"
+        }
+    }
+}

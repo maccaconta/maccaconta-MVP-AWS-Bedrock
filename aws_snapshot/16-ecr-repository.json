@@ -1,0 +1,18 @@
+{
+    "repositories": [
+        {
+            "repositoryArn": "arn:aws:ecr:us-east-1:746443183845:repository/ems-mvp",
+            "registryId": "746443183845",
+            "repositoryName": "ems-mvp",
+            "repositoryUri": "746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp",
+            "createdAt": "2026-03-13T18:31:23.436000-03:00",
+            "imageTagMutability": "MUTABLE",
+            "imageScanningConfiguration": {
+                "scanOnPush": false
+            },
+            "encryptionConfiguration": {
+                "encryptionType": "AES256"
+            }
+        }
+    ]
+}

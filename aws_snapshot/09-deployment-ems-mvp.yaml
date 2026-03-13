@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"ems-mvp","namespace":"default"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"ems-mvp"}},"template":{"metadata":{"labels":{"app":"ems-mvp"}},"spec":{"containers":[{"env":[{"name":"AWS_REGION","value":"us-east-1"},{"name":"BEDROCK_KB_ID","value":"BJWEDBPNJH"}],"image":"746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest","imagePullPolicy":"Always","name":"ems-mvp","ports":[{"containerPort":8080}],"resources":{"limits":{"cpu":"500m","memory":"512Mi"},"requests":{"cpu":"200m","memory":"256Mi"}}}],"serviceAccountName":"ems-mvp-sa"}}}}
+  creationTimestamp: "2026-03-13T21:49:32Z"
+  generation: 1
+  name: ems-mvp
+  namespace: default
+  resourceVersion: "20252"
+  uid: b9507301-9d56-4a26-99ca-13cc98452c9a
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: ems-mvp
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: ems-mvp
+    spec:
+      containers:
+      - env:
+        - name: AWS_REGION
+          value: us-east-1
+        - name: BEDROCK_KB_ID
+          value: BJWEDBPNJH
+        image: 746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp:latest
+        imagePullPolicy: Always
+        name: ems-mvp
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: ems-mvp-sa
+      serviceAccountName: ems-mvp-sa
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  conditions:
+  - lastTransitionTime: "2026-03-13T22:03:10Z"
+    lastUpdateTime: "2026-03-13T22:03:10Z"
+    message: Deployment has minimum availability.
+    reason: MinimumReplicasAvailable
+    status: "True"
+    type: Available
+  - lastTransitionTime: "2026-03-13T22:03:10Z"
+    lastUpdateTime: "2026-03-13T22:03:10Z"
+    message: ReplicaSet "ems-mvp-58f74dcd9f" has successfully progressed.
+    reason: NewReplicaSetAvailable
+    status: "True"
+    type: Progressing
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

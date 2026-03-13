@@ -1,0 +1,2 @@
+NAME                             STATUS   ROLES    AGE   VERSION               INTERNAL-IP      EXTERNAL-IP    OS-IMAGE                        KERNEL-VERSION                   CONTAINER-RUNTIME
+ip-192-168-31-121.ec2.internal   Ready    <none>   17m   v1.34.4-eks-f69f56f   192.168.31.121   54.224.43.51   Amazon Linux 2023.10.20260216   6.12.68-92.122.amzn2023.x86_64   containerd://2.1.5
