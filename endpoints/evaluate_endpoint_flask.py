@@ -5,42 +5,32 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Request
-from fastapi.responses import JSONResponse
+from flask import Blueprint, request, jsonify, current_app
 
 from utils.prompt_repository import PromptRepository
 from utils.prompt_utils import compose_prompt  # se existir; try/except é usado abaixo
 from services.bedrock_runtime_service import BedrockRuntimeService
 from services.bedrock_kb_service import BedrockKnowledgeBaseService
 
-router = APIRouter()
+evaluate_bp = Blueprint("evaluate", __name__)
 
 _repo: Optional[PromptRepository] = None
 _rt: Optional[BedrockRuntimeService] = None
 _kb: Optional[BedrockKnowledgeBaseService] = None
 
 
-def _cfg(config: Any, key: str, default: Any = None) -> Any:
-    return getattr(config, key, default)
+def _cfg(key: str, default: Any = None) -> Any:
+    return current_app.config.get(key, default)
 
 
-def _init(config: Any) -> None:
+def _init() -> None:
     global _repo, _rt, _kb
-
     if _repo is None:
-        _repo = PromptRepository(_cfg(config, "TEMPLATES_ROOT"))
-
+        _repo = PromptRepository(_cfg("TEMPLATES_ROOT"))
     if _rt is None:
-        _rt = BedrockRuntimeService(
-            region=_cfg(config, "AWS_REGION"),
-            timeout_seconds=int(_cfg(config, "BEDROCK_TIMEOUT_SECONDS", 20)),
-        )
-
-    if _kb is None and _cfg(config, "BEDROCK_KB_ID"):
-        _kb = BedrockKnowledgeBaseService(
-            region=_cfg(config, "AWS_REGION"),
-            timeout_seconds=int(_cfg(config, "BEDROCK_TIMEOUT_SECONDS", 20)),
-        )
+        _rt = BedrockRuntimeService(region=_cfg("AWS_REGION"), timeout_seconds=int(_cfg("BEDROCK_TIMEOUT_SECONDS", 20)))
+    if _kb is None and _cfg("BEDROCK_KB_ID"):
+        _kb = BedrockKnowledgeBaseService(region=_cfg("AWS_REGION"), timeout_seconds=int(_cfg("BEDROCK_TIMEOUT_SECONDS", 20)))
 
 
 def _extract_text_from_raw(raw: Dict[str, Any]) -> str:
@@ -53,48 +43,30 @@ def _extract_text_from_raw(raw: Dict[str, Any]) -> str:
 def _try_parse_json(text: str) -> Optional[Dict[str, Any]]:
     if not text:
         return None
-
     text = text.strip()
-
     try:
         return json.loads(text)
     except Exception:
+        # tenta extrair JSON embutido
         s = text.find("{")
         e = text.rfind("}")
         if s != -1 and e != -1 and e > s:
             try:
-                return json.loads(text[s:e + 1])
+                return json.loads(text[s:e+1])
             except Exception:
                 return None
-
     return None
 
 
-def _collect_kb_evidence(
-    kb_service: BedrockKnowledgeBaseService,
-    kb_id: str,
-    queries: List[str],
-    config: Any,
-    top_k: int = 3,
-) -> Dict[str, Any]:
+def _collect_kb_evidence(kb_service: BedrockKnowledgeBaseService, kb_id: str, queries: List[str], top_k: int = 3) -> Dict[str, Any]:
     all_evidences: List[Dict[str, Any]] = []
     all_citations: List[str] = []
-
     for q in queries:
         try:
-            resp = kb_service.retrieve(
-                knowledge_base_id=kb_id,
-                query_text=q,
-                top_k=top_k,
-            )
-            norm = BedrockKnowledgeBaseService.normalize(
-                resp,
-                score_threshold=float(_cfg(config, "DEFAULT_SCORE_THRESHOLD", 0.1)),
-            )
-
+            resp = kb_service.retrieve(knowledge_base_id=kb_id, query_text=q, top_k=top_k)
+            norm = BedrockKnowledgeBaseService.normalize(resp, score_threshold=float(_cfg("DEFAULT_SCORE_THRESHOLD", 0.1)))
             for ev in norm.get("evidences", []):
                 all_evidences.append(ev)
-
             for c in norm.get("citations", []):
                 all_citations.append(c)
         except Exception:
@@ -110,44 +82,39 @@ def _collect_kb_evidence(
     return {"evidences": all_evidences, "citations": deduped}
 
 
-def _load_evaluate_template(template_file: str, config: Any) -> Dict[str, Any]:
+def _load_evaluate_template(template_file: str) -> Dict[str, Any]:
     """
-    Tenta carregar o template por várias mecânicas:
+    Tenta carregar o template por várias mecanicas:
       - se _repo expõe um loader compatível, tenta usar
       - caso contrário, lê o arquivo JSON diretamente de TEMPLATES_ROOT/evaluate/
     """
+    # 1) tente usar PromptRepository se ele tiver algum loader conhecido
     global _repo
-
     if _repo is None:
-        _repo = PromptRepository(_cfg(config, "TEMPLATES_ROOT"))
+        _repo = PromptRepository(_cfg("TEMPLATES_ROOT"))
 
-    loaders = [
-        "load_template",
-        "load_summarize_template",
-        "load_blueprint",
-        "load_component",
-        "load_evaluate_template",
-    ]
-
+    # tentativas com nomes prováveis de métodos
+    loaders = ["load_template", "load_summarize_template", "load_blueprint", "load_component", "load_evaluate_template"]
     for m in loaders:
         if hasattr(_repo, m):
             try:
                 func = getattr(_repo, m)
+                # alguns loaders esperam (category, filename) outros só filename
                 try:
-                    return func("evaluate", template_file)
+                    return func("evaluate", template_file)  # tentativa 1
                 except TypeError:
-                    return func(template_file)
+                    return func(template_file)  # tentativa 2
             except FileNotFoundError:
                 raise
             except Exception:
+                # se falhar, continua para próxima tentativa
                 continue
 
-    templates_root = Path(_cfg(config, "TEMPLATES_ROOT", Path.cwd() / "templates"))
+    # fallback: ler arquivo diretamente
+    templates_root = Path(_cfg("TEMPLATES_ROOT", Path.cwd() / "templates"))
     candidate = templates_root / "evaluate" / template_file
-
     if not candidate.exists():
         raise FileNotFoundError(f"Template não encontrado: {candidate}")
-
     try:
         with open(candidate, "r", encoding="utf-8") as fh:
             return json.load(fh)
@@ -155,33 +122,20 @@ def _load_evaluate_template(template_file: str, config: Any) -> Dict[str, Any]:
         raise RuntimeError(f"Falha ao ler template {candidate}: {e}") from e
 
 
-@router.post("/evaluate")
-async def post_evaluate(
-    request: Request,
-    payload: Optional[Dict[str, Any]] = Body(default=None),
-):
-    config = request.app.state.config
-
+@evaluate_bp.route("/evaluate", methods=["POST"])
+def post_evaluate():
     try:
-        _init(config)
+        _init()
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e)},
-        )
+        return jsonify({"error": str(e)}), 500
 
+    payload = request.get_json(force=True, silent=True)
     if not payload:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Payload JSON inválido"},
-        )
+        return jsonify({"error": "Payload JSON inválido"}), 400
 
     for k in ("sessionId", "rubricaId", "transcript"):
         if k not in payload:
-            return JSONResponse(
-                status_code=400,
-                content={"error": f"Campo obrigatório ausente: {k}"},
-            )
+            return jsonify({"error": f"Campo obrigatório ausente: {k}"}), 400
 
     session_id = payload["sessionId"]
     rubric_id = payload["rubricaId"]
@@ -192,124 +146,81 @@ async def post_evaluate(
 
     # Carrega template com fallback robusto
     try:
-        template = _load_evaluate_template(template_file, config)
-    except FileNotFoundError:
+        template = _load_evaluate_template(template_file)
+    except FileNotFoundError as e:
         template = None
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Falha ao carregar template: {str(e)}"},
-        )
+        return jsonify({"error": f"Falha ao carregar template: {str(e)}"}), 500
 
     # RAG: coleta evidências se KB configurada
-    kb_id = _cfg(config, "BEDROCK_KB_ID")
+    kb_id = _cfg("BEDROCK_KB_ID")
     rag_context = {"evidences": [], "citations": []}
-
     if kb_id and _kb:
         queries = []
         prod = ctx.get("produto")
         if prod:
             queries.append(f"{prod} bula posologia fabricante farmacêutico responsável")
             queries.append(f"{prod} posologia indicação segurança gastrointestinais")
-
         for t in turns:
             text = t.get("text", "").strip()
             if len(text) > 10:
                 queries.append(text)
-
         queries = list(dict.fromkeys([q for q in queries if q]))
-
-        rag_context = _collect_kb_evidence(
-            _kb,
-            kb_id,
-            queries,
-            config=config,
-            top_k=int(_cfg(config, "DEFAULT_TOP_K", 3)),
-        )
+        rag_context = _collect_kb_evidence(_kb, kb_id, queries, top_k=int(_cfg("DEFAULT_TOP_K", 3)))
 
     # Composição do prompt
     if template:
+ 
         try:
-            prompt_out = compose_prompt(
-                payload_json=payload,
-                prompt_template_json=template,
-                rag_context_json=rag_context,
-            )
-
+            prompt_out = compose_prompt(payload_json=payload, prompt_template_json=template, rag_context_json=rag_context)
             if isinstance(prompt_out, dict):
-                prompt = {
-                    "system": prompt_out.get("system", ""),
-                    "user": prompt_out.get("user", ""),
-                }
+                prompt = {"system": prompt_out.get("system", ""), "user": prompt_out.get("user", "")}
             else:
+                # string retornada ->  como user e pegar system do template
                 system_text = (template.get("blocks", {}) or {}).get("system", "")
-                prompt = {
-                    "system": system_text,
-                    "user": str(prompt_out),
-                }
+                prompt = {"system": system_text, "user": str(prompt_out)}
         except Exception:
+            # fallback simples:   user com transcript + citations
             system_text = (template.get("blocks", {}) or {}).get("system", "") if template else ""
             user_lines = [f"Context: {json.dumps(ctx, ensure_ascii=False)}", "Transcript:"]
-
             for i, t in enumerate(turns, start=1):
                 user_lines.append(f"{i}) {t.get('role')}: {t.get('text')}")
-
             if rag_context.get("citations"):
                 user_lines.append("\nEvidências (citations):")
                 user_lines += [f"- {c}" for c in rag_context.get("citations", [])]
-
-            prompt = {
-                "system": system_text,
-                "user": "\n".join(user_lines),
-            }
+            prompt = {"system": system_text, "user": "\n".join(user_lines)}
     else:
+        # prompt minimal e prescritivo
         system_text = (
             "Você é um avaliador clínico-técnico. Sua tarefa é avaliar o desempenho do representante "
             "com base na transcrição e nas evidências listadas. Retorne SOMENTE um JSON válido com os campos: "
             "overallScore, categories, needsTraining, trainingFocus, citations, recommendations. Use as evidências citadas para justificar as notas."
         )
-
         user_lines = [f"Context: {json.dumps(ctx, ensure_ascii=False)}", "Transcript:"]
-
         for i, t in enumerate(turns, start=1):
             user_lines.append(f"{i}) {t.get('role')}: {t.get('text')}")
-
         if rag_context.get("citations"):
             user_lines.append("\nEvidências (citations):")
             user_lines += [f"- {c}" for c in rag_context.get("citations", [])]
+        prompt = {"system": system_text, "user": "\n".join(user_lines)}
 
-        prompt = {
-            "system": system_text,
-            "user": "\n".join(user_lines),
-        }
-
+    # generation config
     gen_cfg = payload.get("generationConfig", {}) or {}
     generation = {
-        "maxOutputTokens": int(
-            gen_cfg.get("maxOutputTokens", _cfg(config, "DEFAULT_MAX_OUTPUT_TOKENS", 400))
-        ),
+        "maxOutputTokens": int(gen_cfg.get("maxOutputTokens", _cfg("DEFAULT_MAX_OUTPUT_TOKENS", 400))),
         "temperature": float(gen_cfg.get("temperature", 0.0)),
         "topP": float(gen_cfg.get("topP", 0.1)),
     }
 
-    model_id = _cfg(config, "BEDROCK_EVALUATE_MODEL_ID")
+    model_id = _cfg("BEDROCK_EVALUATE_MODEL_ID")
     if not model_id:
-        return JSONResponse(
-            status_code=500,
-            content={"error": "BEDROCK_EVALUATE_MODEL_ID não configurado"},
-        )
+        return jsonify({"error": "BEDROCK_EVALUATE_MODEL_ID não configurado"}), 500
 
+    # chama runtime
     try:
-        llm_resp = _rt.invoke_text_model(
-            model_id=model_id,
-            prompt=prompt,
-            generation=generation,
-        )
+        llm_resp = _rt.invoke_text_model(model_id=model_id, prompt=prompt, generation=generation)
     except Exception as e:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Falha ao invocar modelo: {str(e)}"},
-        )
+        return jsonify({"error": f"Falha ao invocar modelo: {str(e)}"}), 502
 
     raw = llm_resp.get("raw") or {}
     reply = llm_resp.get("replyText") or _extract_text_from_raw(raw)
@@ -318,28 +229,10 @@ async def post_evaluate(
     if parsed and isinstance(parsed, dict):
         result = parsed
     else:
-        return JSONResponse(
-            status_code=502,
-            content={
-                "error": "Modelo não retornou JSON válido",
-                "conteudo_bruto": reply,
-                "raw": raw,
-            },
-        )
+         return jsonify({"error": "Modelo não retornou JSON válido", "conteudo_bruto": reply, "raw": raw}), 502
 
     result.setdefault("sessionId", session_id)
-    result.setdefault("rubricaId", rubric_id)
     result.setdefault("model", model_id)
-    result.setdefault(
-        "telemetry",
-        {
-            "generation": generation,
-            "usedKb": bool(kb_id and _kb),
-            "templateFile": template_file,
-        },
-    )
+    result.setdefault("telemetry", {"generation": generation, "usedKb": bool(kb_id)})
 
-    return JSONResponse(
-        status_code=200,
-        content=result,
-    )
+    return jsonify(result), 200

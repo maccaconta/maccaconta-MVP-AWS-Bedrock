@@ -5,21 +5,39 @@
 # Objetivo: executar o fluxo do Turn via LangGraph, sem tocar nos endpoints atuais.
 # =============================================================================
 
-from flask import Blueprint, request, jsonify, current_app
+from __future__ import annotations
+
+from typing import Any, Dict, Optional
+
+from fastapi import APIRouter, Body, Request
+from fastapi.responses import JSONResponse
+
 from graphs.turn_graph import run_turn_graph
 
-turn_graph_bp = Blueprint("turn_graph", __name__)
+router = APIRouter()
 
-@turn_graph_bp.route("/turn-graph", methods=["POST"])
-def post_turn_graph():
-    payload = request.get_json(force=True, silent=True)
+
+@router.post("/turn-graph")
+async def post_turn_graph(
+    request: Request,
+    payload: Optional[Dict[str, Any]] = Body(default=None),
+):
     if payload is None:
-        return jsonify({"error": "Payload JSON inválido"}), 400
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Payload JSON inválido"},
+        )
 
     # roda o grafo
-    final_state = run_turn_graph(payload, dict(current_app.config))
+    final_state = run_turn_graph(payload, vars(request.app.state.config).copy())
 
     if final_state.get("error"):
-        return jsonify({"error": final_state["error"]}), int(final_state.get("http_status", 500))
+        return JSONResponse(
+            status_code=int(final_state.get("http_status", 500)),
+            content={"error": final_state["error"]},
+        )
 
-    return jsonify(final_state["response"]), 200
+    return JSONResponse(
+        status_code=200,
+        content=final_state["response"],
+    )

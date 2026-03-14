@@ -2,7 +2,7 @@
 # Arquivo: endpoints/turn_endpoint.py
 # Projeto: Backend de IA (MVP) - EMS GenAI
 # Endpoint:
-#   POST /v1/ai/turn   (prefix "/v1/ai" é registrado no app.py)
+#   POST /v1/ai/turn   (url_prefix "/v1/ai" é registrado no app.py)
 #
 # Finalidade:
 #   Processar um Turn síncrono:
@@ -14,7 +14,7 @@
 #     6) Retorna replyText + citations + flags + telemetria
 #
 # Funções:
-#   - Evita KeyError em config: usa request.app.state.config
+#   - Evita KeyError em config: usa current_app.config.get(...)
 #   - RAG opcional: se BEDROCK_KB_ID não estiver setado, não derruba o endpoint
 #   - Região e timeouts via config
 #   - Defaults para top_k/threshold e geração com fallbacks
@@ -35,8 +35,7 @@ from __future__ import annotations
 import time
 from typing import Dict, Any, Optional
 
-from fastapi import APIRouter, Body, Request
-from fastapi.responses import JSONResponse
+from flask import Blueprint, request, jsonify, current_app
 
 from utils.validation_utils import validate_turn_payload
 from utils.prompt_repository import PromptRepository
@@ -45,36 +44,34 @@ from utils.prompt_composer import compose_turn_prompt
 from services.bedrock_kb_service import BedrockKnowledgeBaseService
 from services.bedrock_runtime_service import BedrockRuntimeService
 
-router = APIRouter()
+turn_bp = Blueprint("turn", __name__)
 
 _repo: Optional[PromptRepository] = None
 _kb: Optional[BedrockKnowledgeBaseService] = None
 _rt: Optional[BedrockRuntimeService] = None
 
 
-def _init(config):
+def _init():
     """
     Inicializa dependências compartilhadas (MVP).
     """
     global _repo, _kb, _rt
 
     if _repo is None:
-        _repo = PromptRepository(config.TEMPLATES_ROOT)
-
-    print("***** BEDROCK_KB_ID =", getattr(config, "BEDROCK_KB_ID", None))
+        _repo = PromptRepository(current_app.config["TEMPLATES_ROOT"])
 
     if _kb is None:
         # KB é opcional: se BEDROCK_KB_ID não estiver configurado, _kb permanece None
-        if getattr(config, "BEDROCK_KB_ID", None):
+        if current_app.config.get("BEDROCK_KB_ID"):
             _kb = BedrockKnowledgeBaseService(
-                region=config.AWS_REGION,
-                timeout_seconds=config.BEDROCK_TIMEOUT_SECONDS,
+                region=current_app.config["AWS_REGION"],
+                timeout_seconds=current_app.config["BEDROCK_TIMEOUT_SECONDS"],
             )
 
     if _rt is None:
         _rt = BedrockRuntimeService(
-            region=config.AWS_REGION,
-            timeout_seconds=config.BEDROCK_TIMEOUT_SECONDS,
+            region=current_app.config["AWS_REGION"],
+            timeout_seconds=current_app.config["BEDROCK_TIMEOUT_SECONDS"],
         )
 
 
@@ -145,11 +142,8 @@ def _compute_rag_metrics(rag_norm: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-@router.post("/turn")
-async def post_turn(
-    request: Request,
-    payload: Optional[Dict[str, Any]] = Body(default=None),
-):
+@turn_bp.route("/turn", methods=["POST"])
+def post_turn():
     """
     POST /v1/ai/turn
     Fluxo:
@@ -160,21 +154,15 @@ async def post_turn(
       5) invoca Bedrock Runtime (medindo latência)
       6) extrai tokens/telemetria e retorna resposta completa ao backend da aplicação
     """
-    config = request.app.state.config
-    _init(config)
+    _init()
 
+    payload = request.get_json(force=True, silent=True)
     if payload is None:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Payload JSON inválido"},
-        )
+        return jsonify({"error": "Payload JSON inválido"}), 400
 
     err = validate_turn_payload(payload)
     if err:
-        return JSONResponse(
-            status_code=400,
-            content={"error": err},
-        )
+        return jsonify({"error": err}), 400
 
     # 1) Carrega blueprint (receita)
     pr = payload["promptRef"]
@@ -184,10 +172,7 @@ async def post_turn(
     try:
         blueprint = _repo.load_blueprint(blueprint_id, blueprint_version)
     except FileNotFoundError as e:
-        return JSONResponse(
-            status_code=404,
-            content={"error": str(e)},
-        )
+        return jsonify({"error": str(e)}), 404
 
     # 2) Resolve componentes do blueprint
     refs = blueprint.get("componentRefs", {})  # ex.: {"persona": "...json", ...}
@@ -200,27 +185,17 @@ async def post_turn(
             "saida": _repo.load_component("saida", refs["saida"]),
         }
     except FileNotFoundError as e:
-        return JSONResponse(
-            status_code=404,
-            content={"error": str(e)},
-        )
+        return jsonify({"error": str(e)}), 404
 
     # 3) RAG via Knowledge Base (S3 Vectors) - opcional
-    kb_id = getattr(config, "BEDROCK_KB_ID", None)
+    kb_id = current_app.config.get("BEDROCK_KB_ID")
     rag_norm = {"evidences": [], "citations": [], "flags": [], "no_evidence": True}
     rag_metrics = {}
     retrieval_cfg = payload.get("retrievalConfig", {}) or {}
-
     if kb_id and _kb:
-        top_k = int(retrieval_cfg.get("topK", getattr(config, "DEFAULT_TOP_K", 3)))
-        threshold = float(
-            retrieval_cfg.get(
-                "scoreThreshold",
-                getattr(config, "DEFAULT_SCORE_THRESHOLD", 0.1),
-            )
-        )
+        top_k = int(retrieval_cfg.get("topK", current_app.config.get("DEFAULT_TOP_K", 3)))
+        threshold = float(retrieval_cfg.get("scoreThreshold", current_app.config.get("DEFAULT_SCORE_THRESHOLD", 0.1)))
         filters = retrieval_cfg.get("filters")
-
         kb_resp = _kb.retrieve(
             knowledge_base_id=kb_id,
             query_text=payload["userText"],
@@ -231,14 +206,7 @@ async def post_turn(
         rag_metrics = _compute_rag_metrics(rag_norm)
     else:
         # se não há KB, mantenha defaults
-        rag_metrics = {
-            "citations": [],
-            "evidenceCount": 0,
-            "avgScore": None,
-            "maxScore": None,
-            "flags": [],
-            "noEvidence": True,
-        }
+        rag_metrics = {"citations": [], "evidenceCount": 0, "avgScore": None, "maxScore": None, "flags": [], "noEvidence": True}
 
     # 4) Composição do prompt final (usando seu composer existente)
     prompt_str = compose_turn_prompt(
@@ -259,54 +227,28 @@ async def post_turn(
     # 5) Invoke Bedrock Runtime (medir latência)
     gen_cfg = payload.get("generationConfig", {}) or {}
     generation = {
-        "maxOutputTokens": int(
-            gen_cfg.get(
-                "maxOutputTokens",
-                getattr(config, "DEFAULT_MAX_OUTPUT_TOKENS", 300),
-            )
-        ),
-        "temperature": float(
-            gen_cfg.get(
-                "temperature",
-                getattr(config, "DEFAULT_TEMPERATURE", 0.0),
-            )
-        ),
-        "topP": float(
-            gen_cfg.get(
-                "topP",
-                getattr(config, "DEFAULT_TOP_P", 0.1),
-            )
-        ),
+        "maxOutputTokens": int(gen_cfg.get("maxOutputTokens", current_app.config.get("DEFAULT_MAX_OUTPUT_TOKENS", 300))),
+        "temperature": float(gen_cfg.get("temperature", current_app.config.get("DEFAULT_TEMPERATURE", 0.0))),
+        "topP": float(gen_cfg.get("topP", current_app.config.get("DEFAULT_TOP_P", 0.1))),
     }
 
-    model_id = getattr(config, "BEDROCK_TURN_MODEL_ID", None)
+    model_id = current_app.config.get("BEDROCK_TURN_MODEL_ID")
     if not model_id:
-        return JSONResponse(
-            status_code=500,
-            content={"error": "BEDROCK_TURN_MODEL_ID não configurado"},
-        )
+        return jsonify({"error": "BEDROCK_TURN_MODEL_ID não configurado"}), 500
 
     start = time.time()
     try:
         # seu BedrockRuntimeService aceita prompt como string ou dict
         # passamos um dict com system vazio e user=prompt_str se preferir
-        llm = _rt.invoke_text_model(
-            model_id=model_id,
-            prompt=prompt_str,
-            generation=generation,
-        )
+        llm = _rt.invoke_text_model(model_id=model_id, prompt=prompt_str, generation=generation)
     except Exception as e:
-        return JSONResponse(
-            status_code=502,
-            content={"error": f"Falha ao invocar modelo: {str(e)}"},
-        )
+        return jsonify({"error": f"Falha ao invocar modelo: {str(e)}"}), 502
     end = time.time()
     latency_ms = int((end - start) * 1000)
 
     # 6) Extrair telemetria do raw retornado
     raw = llm.get("raw", {}) or {}
     usage = _extract_usage_from_raw(raw)
-
     # preencher promptLengthTokens se runtime devolveu (alguns runtimes informam)
     # procurar nomes possíveis
     try:
@@ -314,11 +256,7 @@ async def post_turn(
             # algumas APIs retornam usage.promptTokens / usage.inputTokens etc.
             maybe_prompt_tokens = None
             u = raw.get("usage") or {}
-            maybe_prompt_tokens = (
-                u.get("promptTokens")
-                or u.get("inputTokens")
-                or u.get("prompt_token_count")
-            )
+            maybe_prompt_tokens = u.get("promptTokens") or u.get("inputTokens") or u.get("prompt_token_count")
             if maybe_prompt_tokens is not None:
                 try:
                     prompt_metadata["promptLengthTokens"] = int(maybe_prompt_tokens)
@@ -331,7 +269,7 @@ async def post_turn(
     # variavel mantida em config.py = COST_PER_1000_TOKENS_USD
     cost_estimate_usd = None
     try:
-        cost_per_1000 = float(getattr(config, "COST_PER_1000_TOKENS_USD", 0.0))
+        cost_per_1000 = float(current_app.config.get("COST_PER_1000_TOKENS_USD", 0.0))
         if usage.get("totalTokens") is not None and cost_per_1000 > 0:
             cost_estimate_usd = (usage["totalTokens"] / 1000.0) * cost_per_1000
     except Exception:
@@ -355,13 +293,8 @@ async def post_turn(
         "telemetry": {
             "blueprintId": blueprint_id,
             "blueprintVersion": blueprint_version,
-            "ragTopK": int(retrieval_cfg.get("topK", getattr(config, "DEFAULT_TOP_K", 3))),
-            "ragThreshold": float(
-                retrieval_cfg.get(
-                    "scoreThreshold",
-                    getattr(config, "DEFAULT_SCORE_THRESHOLD", 0.1),
-                )
-            ),
+            "ragTopK": int(retrieval_cfg.get("topK", current_app.config.get("DEFAULT_TOP_K", 3))),
+            "ragThreshold": float(retrieval_cfg.get("scoreThreshold", current_app.config.get("DEFAULT_SCORE_THRESHOLD", 0.1))),
             "usedKb": bool(kb_id and _kb),
         },
     }
@@ -370,4 +303,4 @@ async def post_turn(
     response["citations"] = rag_metrics.get("citations", [])
     response["flags"] = rag_metrics.get("flags", [])
 
-    return JSONResponse(status_code=200, content=response)
+    return jsonify(response), 200
