@@ -1,0 +1,11 @@
+aws_region = "us-east-1"
+aws_account_id = "746443183845"
+cluster_name = "ems-mvp-prod-cluster"
+node_group_name = "ems-mvp-prod-ng"
+node_instance_type = "t3.small"
+node_desired_capacity = 2
+ecr_repository = "ems-mvp-prod"
+image_tag = "latest"
+k8s_namespace = "prod"
+k8s_service_account = "ems-mvp-sa"
+bedrock_kb_id = "BJWEDBPNJH"

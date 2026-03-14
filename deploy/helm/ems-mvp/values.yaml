@@ -1,0 +1,37 @@
+replicaCount: 1
+
+image:
+  repository: 746443183845.dkr.ecr.us-east-1.amazonaws.com/ems-mvp
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8080
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  - name: AWS_REGION
+    value: "us-east-1"
+  - name: BEDROCK_KB_ID
+    value: "BJWEDBPNJH"
+
+serviceAccount:
+  create: false
+  name: ems-mvp-sa
+  annotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+serviceAccount:
+  create: false
+  name: ems-mvp-sa
+  annotations: {}

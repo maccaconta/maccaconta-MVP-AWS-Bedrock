@@ -1,0 +1,11 @@
+aws_region = "us-east-1"
+aws_account_id = "746443183845"
+cluster_name = "ems-mvp-qa-cluster"
+node_group_name = "ems-mvp-qa-ng"
+node_instance_type = "t3.small"
+node_desired_capacity = 1
+ecr_repository = "ems-mvp-qa"
+image_tag = "latest"
+k8s_namespace = "qa"
+k8s_service_account = "ems-mvp-sa"
+bedrock_kb_id = "BJWEDBPNJH"
