@@ -42,67 +42,61 @@ deactivate
 
 7) Rodar localmente com Docker
 
-docker build -t ems-ia-backend:latest .
-docker run --rm -p 8080:8080 \
+7.1 Ver containers rodando
+docker ps
+Se aparecer algo como:
+ems-mvp
+vamos parar.
+
+7.2 Parar o container
+docker stop ems-mvp
+
+7.3 Remover o container
+docker rm ems-mvp
+
+7.4 Remover a imagem antiga
+docker rmi ems-mvp:latest
+Se aparecer erro dizendo que a imagem está sendo usada, rode:
+docker rmi -f ems-mvp:latest
+
+7.5 Recriar a imagem
+Dentro da pasta do projeto:
+docker build -t ems-mvp:latest .
+
+7.6 Subir o container novamente
+
+docker run -d --name ems-mvp \
+  -p 8080:8080 \
+  -e AWS_ACCESS_KEY_ID=************************* \
+  -e AWS_SECRET_ACCESS_KEY=*************************\
+  -e BEDROCK_KB_ID=*************************\
   -e AWS_REGION=us-east-1 \
-  -e BEDROCK_KB_ID=SEU_KB_ID \
-  -e BEDROCK_TURN_MODEL_ID=amazon.nova-pro-v1:0 \
-  ems-ia-backend:latest
+  ems-mvp:latest
 
-  8) Push para o ECR (registro da AWS)
-  8.1 Criar repo no ECR: ems-ia-backend
-  8.2 Login no ECR
-  8.3 Tag e push
+Exemplo: 
+Starting gunicorn
+Listening at http://0.0.0.0:8080
 
-  aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
-  docker tag ems-ia-backend:latest <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ems-ia-backend:latest
-  docker push <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ems-ia-backend:latest
+7.7 Testar
+Abra outro terminal ou Postman:
+curl -X POST http://localhost:8080/v1/ai/turn \
+-H "Content-Type: application/json" \
+-d '{}'
+ou no browser:
+http://localhost:8080
 
+7.8 Comandos úteis
+Ver logs:
+docker logs -f ems-mvp
+Ver container rodando:
+docker ps
+Entrar no container:
+docker exec -it ems-mvp /bin/bash
 
-9)Arquivos YAML
-
-9.1 Deploy no EKS (Kubernetes)
-
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: ems-ia-backend
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: ems-ia-backend
-  template:
-    metadata:
-      labels:
-        app: ems-ia-backend
-    spec:
-      containers:
-        - name: ems-ia-backend
-          image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/ems-ia-backend:latest
-          ports:
-            - containerPort: 8080
-          env:
-            - name: AWS_REGION
-              value: "us-east-1"
-            - name: BEDROCK_KB_ID
-              value: "SEU_KB_ID"
-            - name: BEDROCK_TURN_MODEL_ID
-              value: "amazon.nova-pro-v1:0"
-
-
-9.2 Service (ClusterIP)
-apiVersion: v1
-kind: Service
-metadata:
-  name: ems-ia-backend-svc
-spec:
-  selector:
-    app: ems-ia-backend
-  ports:
-    - port: 80
-      targetPort: 8080
-  type: ClusterIP
-
+7.9 Dica de desenvolvimento
+Atualização rápida:
+docker rm -f ems-mvp
+docker build -t ems-mvp:latest .
+docker run --name ems-mvp -p 8080:8080 ems-mvp:latest
 
 

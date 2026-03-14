@@ -32,4 +32,5 @@ EXPOSE 8080
 
 # Em produção: gunicorn
 # app:create_app precisa existir e retornar Flask app (no seu app.py já existe create_app)
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:create_app()", "--workers", "2", "--threads", "4", "--timeout", "120"]
+# Flask WSGI CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:create_app()", "--workers", "2", "--threads", "4", "--timeout", "120"]
+CMD ["gunicorn", "app:app", "-k", "uvicorn.workers.UvicornWorker", "-w", "2", "-b", "0.0.0.0:8080"]
